@@ -37,6 +37,8 @@ data/
 fdataset/
 model/
 server/
+webapp/
+dataset/
 *.pt
 *.pth
 
