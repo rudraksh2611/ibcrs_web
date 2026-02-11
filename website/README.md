@@ -1,6 +1,6 @@
-# IBCRS - Intelligent Biometric & Crop Recognition System
+# IBCRS - Intelligent BioTech Component Recognition System
 
-A professional web application for real-time object detection using YOLOv8 deep learning model. This system is designed for agricultural monitoring, pest detection, crop analysis, and biometric recognition tasks.
+A professional web application for real-time object detection using YOLOv8 deep learning model. This system is designed for intelligent recognition and identification of biosensors, equipment components, and laboratory instruments used in biotechnology research.
 
 ## 📋 Features
 
@@ -77,7 +77,56 @@ FRAME_WIDTH = 1280                          # Webcam resolution
 FRAME_HEIGHT = 720                          # Webcam resolution
 ```
 
-## 🎯 Running the Application
+## 📸 Screenshots & Interface
+
+The IBCRS system features a modern, intuitive interface for real-time component detection. Below are mockups of the key interface screens:
+
+### Main Detection Interface
+![Main Detection Interface](./frontend/assets/screenshots/01-main-detection-interface.svg)
+The primary dashboard showing live video feed with real-time object detection, performance metrics (FPS, inference time, CPU/memory usage), and detected components with learning resources.
+
+### Component Information Modal
+![Component Modal](./frontend/assets/screenshots/02-component-information-modal.svg)
+Interactive modal popup displaying detailed information about detected components, including advantages and disadvantages for each detected item.
+
+### Component Guide Page
+![Component Guide](./frontend/assets/screenshots/03-component-guide-page.svg)
+Dedicated information page for each component showing comprehensive documentation, advantages/disadvantages, and tutorial video references.
+
+### Performance Dashboard
+![Performance Stats](./frontend/assets/screenshots/04-performance-dashboard.svg)
+Real-time performance monitoring dashboard displaying FPS, inference time, CPU/memory usage, and detailed detection statistics for each component class.
+
+### Multi-Component Detection
+![Multi-Detection](./frontend/assets/screenshots/05-multi-detection-scenario.svg)
+Demonstration of multiple components detected simultaneously with real-time bounding boxes, confidence scores, and detection counts on the video feed.
+
+### Mobile Responsive View
+![Mobile View](./frontend/assets/screenshots/06-mobile-responsive-view.svg)
+Responsive design for mobile and tablet devices, with optimized layout for smaller screens while maintaining full functionality.
+
+### System Overview Dashboard
+![Component Overview](./frontend/assets/screenshots/07-component-overview-dashboard.svg)
+Comprehensive overview of all 7 recognized components (4 sensors + 3 lab equipment), system statistics, and unified detection history.
+
+## 🎯 Detectable Components
+
+The IBCRS system is trained to recognize **7 different components**:
+
+### Biosensors & IoT Devices
+1. **📷 Camera (Cam)** - Visual image capture and monitoring
+2. **🛰️ Drone Receiver (DroneRx)** - Drone RF signal reception
+3. **💡 PIR Sensor** - Motion and thermal sensing
+4. **📡 Sonar Sensor** - Ultrasonic distance measurement
+
+### Laboratory Equipment
+5. **🧪 Colorimeter** - Light absorption and color measurement
+6. **🔧 Magnetic Stirrer** - Sample stirring and mixing
+7. **💧 pH Meter** - pH (acidity) measurement
+
+Each component has a dedicated information page accessible from the main interface with detailed descriptions, use cases, and technical specifications.
+
+## 🚀 Running the Application
 
 ### Start the Backend Server
 
