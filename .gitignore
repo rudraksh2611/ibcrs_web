@@ -31,3 +31,12 @@ yarn-error.log*
 Thumbs.db
 Desktop.ini
 
+# Machine Learning & Data - Large files
+ml/
+data/
+fdataset/
+model/
+server/
+*.pt
+*.pth
+
