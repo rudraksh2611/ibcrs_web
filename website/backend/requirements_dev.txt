@@ -1,0 +1,19 @@
+Flask>=2.2,<3
+Flask-CORS>=4.0.0
+opencv-python>=4.8
+ultralytics>=8.3
+psutil>=5.9.5
+Pillow>=10.0.0
+numpy>=1.24.0
+
+# Development dependencies (for testing and development)
+# pytest>=7.0.0
+# pytest-cov>=4.0.0
+# black>=22.0.0
+# flake8>=4.0.0
+# pylint>=2.0.0
+
+# Note: `torch` and `torchvision` are intentionally NOT pinned here because
+# PyTorch provides platform- and Python-version-specific wheels. Install
+# `torch`/`torchvision` separately following the instructions in
+# `backend/torch_install.md` before or after installing this requirements file.
