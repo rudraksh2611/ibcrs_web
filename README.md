@@ -2,7 +2,15 @@
 
 A professional real-time object detection web application for identifying and tracking laboratory components and equipment using advanced YOLOv8 AI technology.
 
-## 🎯 About
+## � Live Demo
+
+**Visit the live website:** [https://jagriti2325.github.io/IBCRS/](https://jagriti2325.github.io/IBCRS/)
+
+- **Main Interface:** [https://jagriti2325.github.io/IBCRS/](https://jagriti2325.github.io/IBCRS/)
+- **About Page:** [https://jagriti2325.github.io/IBCRS/about.html](https://jagriti2325.github.io/IBCRS/about.html)
+- **Component Pages:** Component detection and information pages
+
+## �🎯 About
 
 **IBCRS** (Intelligent BioTech Component Recognition System) is an intelligent detection system designed to identify and provide detailed information about various laboratory and industrial equipment. The system uses state-of-the-art YOLOv8 deep learning models for real-time detection and classification.
 
@@ -79,7 +87,8 @@ IBCRS/
    Server runs on `http://localhost:5000`
 
 5. **Open in browser**
-   Navigate to `http://localhost:5000` and start detection!
+   - **Local Development:** Navigate to `http://localhost:5000` and start detection!
+   - **Live Online:** Visit [https://jagriti2325.github.io/IBCRS/](https://jagriti2325.github.io/IBCRS/)
 
 ## 🖼️ User Interface Overview
 
