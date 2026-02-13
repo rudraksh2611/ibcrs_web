@@ -3,7 +3,7 @@ IBCRS Live Object Detection Web Application
 Flask backend for real-time YOLOv8 object detection from webcam
 """
 
-from flask import Flask, render_template, Response, jsonify, send_from_directory
+from flask import Flask, render_template, Response, jsonify, send_from_directory, request
 from flask_cors import CORS
 import cv2
 import threading
@@ -12,12 +12,15 @@ from ultralytics import YOLO
 import os
 import psutil
 import sys
+import numpy as np
+import base64
+from io import BytesIO
 
 # Import configuration from config.py
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 
-app = Flask(__name__, template_folder='../frontend', static_folder='../frontend')
+app = Flask(__name__, template_folder='../frontend', static_folder='../frontend', static_url_path='')
 CORS(app)
 
 # ============ CONFIGURATION ============
@@ -210,6 +213,11 @@ def index():
     """Serve main page"""
     return render_template('index.html')
 
+@app.route('/about')
+def about():
+    """Serve about page"""
+    return render_template('about.html')
+
 @app.route('/component_cam')
 def component_cam():
     """Serve camera component page"""
@@ -282,6 +290,62 @@ def health_check():
         'model_loaded': model is not None,
         'detection_running': detection_stats['is_running']
     })
+
+@app.route('/api/detect', methods=['POST'])
+@app.route('/api/predict', methods=['POST'])
+def detect():
+    """Detect objects in a single frame"""
+    try:
+        data = request.get_json()
+        if not data or 'image' not in data:
+            return jsonify({'error': 'No image provided'}), 400
+        
+        # Decode base64 image
+        image_data = data['image']
+        if ',' in image_data:
+            image_data = image_data.split(',')[1]
+        
+        image_bytes = base64.b64decode(image_data)
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if frame is None:
+            return jsonify({'error': 'Failed to decode image'}), 400
+        
+        # Run inference
+        results = model(
+            frame,
+            conf=CONFIDENCE_THRESHOLD,
+            imgsz=IMG_SIZE,
+            verbose=False
+        )[0]
+        
+        # Extract detections
+        detections = []
+        for box in results.boxes:
+            cls_id = int(box.cls[0])
+            conf = float(box.conf[0])
+            class_name = model.names[cls_id]
+            x1, y1, x2, y2 = map(float, box.xyxy[0])
+            
+            detection = {
+                'class': class_name,
+                'label': class_name,
+                'confidence': conf,
+                'box': {
+                    'x1': x1,
+                    'y1': y1,
+                    'x2': x2,
+                    'y2': y2
+                }
+            }
+            detections.append(detection)
+        
+        return jsonify(detections)
+        
+    except Exception as e:
+        print(f"Error in detect: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 # ============ ERROR HANDLERS ============
 
