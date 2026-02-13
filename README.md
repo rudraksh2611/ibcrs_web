@@ -4,11 +4,13 @@ A professional real-time object detection web application for identifying and tr
 
 ## � Live Demo
 
-**Visit the live website:** [https://jagriti2325.github.io/IBCRS/](https://jagriti2325.github.io/IBCRS/)
+**Website is now live on GitHub Pages!**
 
-- **Main Interface:** [https://jagriti2325.github.io/IBCRS/](https://jagriti2325.github.io/IBCRS/)
-- **About Page:** [https://jagriti2325.github.io/IBCRS/about.html](https://jagriti2325.github.io/IBCRS/about.html)
-- **Component Pages:** Component detection and information pages
+- **Main Interface:** https://jagriti2325.github.io/IBCRS/
+- **About Page:** https://jagriti2325.github.io/IBCRS/about.html  
+- **Component Pages:** All 7 biotech components with detailed information
+
+> **Note:** Webcam detection features work on localhost. The GitHub Pages link shows the static information pages.
 
 ## �🎯 About
 
