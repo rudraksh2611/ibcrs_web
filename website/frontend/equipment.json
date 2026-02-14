@@ -1,0 +1,12 @@
+{
+  "cam": { "name": "Camera", "code": "CAM-001", "category": "Imaging", "description": "ESP32-CAM for image capturing and IoT surveillance.", "location": "Lab A", "status": "in-stock" },
+  "camera": { "name": "Camera", "code": "CAM-001", "category": "Imaging", "description": "ESP32-CAM for image capturing and IoT surveillance.", "location": "Lab A", "status": "in-stock" },
+  "dronerx": { "name": "Drone Receiver", "code": "DRX-001", "category": "RF", "description": "RF receiver for wireless control and data transmission.", "location": "Lab B", "status": "in-stock" },
+  "pir": { "name": "PIR Sensor", "code": "PIR-001", "category": "Sensors", "description": "Passive infrared motion detection.", "location": "Lab C", "status": "in-stock" },
+  "sonar": { "name": "Sonar Sensor", "code": "SON-001", "category": "Sensors", "description": "Ultrasonic distance measurement.", "location": "Lab C", "status": "in-stock" },
+  "colorimeter": { "name": "Colorimeter", "code": "CLR-001", "category": "Analytics", "description": "Color measurement and analysis.", "location": "Lab D", "status": "in-stock" },
+  "magnetic_stirrer": { "name": "Magnetic Stirrer", "code": "STIR-001", "category": "Lab Equipment", "description": "Laboratory mixing equipment.", "location": "Lab D", "status": "in-stock" },
+  "stirrer": { "name": "Magnetic Stirrer", "code": "STIR-001", "category": "Lab Equipment", "description": "Laboratory mixing equipment.", "location": "Lab D", "status": "in-stock" },
+  "ph_meter": { "name": "pH Meter", "code": "PH-001", "category": "Analytics", "description": "pH measurement for solutions.", "location": "Lab D", "status": "in-stock" },
+  "ph meter": { "name": "pH Meter", "code": "PH-001", "category": "Analytics", "description": "pH measurement for solutions.", "location": "Lab D", "status": "in-stock" }
+}

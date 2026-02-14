@@ -36,8 +36,6 @@ const equipmentMapping = {
 let videoFeed;
 let webcamFeed;
 let detectionCanvas;
-let startBtn;
-let stopBtn;
 let startWebcamBtn;
 let stopWebcamBtn;
 let snapshotBtn;
@@ -56,8 +54,6 @@ function initializeDOMElements() {
     videoFeed = document.getElementById('video-feed');
     webcamFeed = document.getElementById('webcam-feed');
     detectionCanvas = document.getElementById('detection-canvas');
-    startBtn = document.getElementById('start-btn');
-    stopBtn = document.getElementById('stop-btn');
     startWebcamBtn = document.getElementById('start-webcam-btn');
     stopWebcamBtn = document.getElementById('stop-webcam-btn');
     snapshotBtn = document.getElementById('snapshot-btn');
@@ -69,7 +65,7 @@ function initializeDOMElements() {
     fpsCounter = document.getElementById('fps-counter');
     detectionResults = document.getElementById('detection-results');
     loadingSpinner = document.getElementById('loading-spinner');
-    navLinks = document.querySelectorAll('.nav-link');
+    navLinks = document.querySelectorAll('.nav-btn[data-tab], .nav-link');
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -81,17 +77,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ============ EVENT LISTENERS ============
 function initializeEventListeners() {
-    if (startBtn) startBtn.addEventListener('click', startDetection);
-    if (stopBtn) stopBtn.addEventListener('click', stopDetection);
-    if (snapshotBtn) snapshotBtn.addEventListener('click', captureSnapshot);
     if (startWebcamBtn) startWebcamBtn.addEventListener('click', startWebcam);
     if (stopWebcamBtn) stopWebcamBtn.addEventListener('click', stopWebcam);
+    if (snapshotBtn) snapshotBtn.addEventListener('click', captureSnapshot);
 }
 
 function setupNavigation() {
     navLinks.forEach(link => {
         link.addEventListener('click', function(e) {
-            // Update active state
+            // determine target tab: support `data-tab` (buttons) or `href` anchors (links)
+            const tab = this.getAttribute('data-tab') || (this.getAttribute('href') || '').replace(/^.*#/, '');
+            if (tab) showSection(tab);
+
+            // Update active state across both button/link variants
             navLinks.forEach(l => l.classList.remove('active'));
             this.classList.add('active');
         });
@@ -114,7 +112,8 @@ function updateActiveNavLink() {
 
     navLinks.forEach(link => {
         link.classList.remove('active');
-        if (link.getAttribute('href') === `#${current}`) {
+        const tab = link.getAttribute('data-tab') || (link.getAttribute('href') || '').replace(/^.*#/, '');
+        if (tab === current) {
             link.classList.add('active');
         }
     });
@@ -203,48 +202,25 @@ async function stopDetection() {
 }
 
 function captureSnapshot() {
-    if (!videoFeed.src || !isDetectionRunning) {
+    const src = webcamFeed && webcamFeed.srcObject ? webcamFeed : (videoFeed && videoFeed.src ? videoFeed : null);
+    if (!src || !isDetectionRunning) {
         showAlert('Start detection first to capture a snapshot.', 'warning');
         return;
     }
-
     try {
-        // Create canvas and draw current frame
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        canvas.width = videoFeed.naturalWidth || videoFeed.width;
-        canvas.height = videoFeed.naturalHeight || videoFeed.height;
-        
-        // For streamed image, we'll use a workaround
-        const link = document.createElement('a');
-        link.href = videoFeed.src;
-        link.download = `ibcrs-snapshot-${new Date().getTime()}.jpg`;
-        
-        // Create a temporary canvas with the current frame
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = 1280;
-        tempCanvas.height = 720;
-        
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCtx.drawImage(videoFeed, 0, 0);
-        
-        // Download the snapshot
-        tempCanvas.toBlob((blob) => {
-            const url = URL.createObjectURL(blob);
+        const c = document.createElement('canvas');
+        c.width = src.videoWidth || 1280;
+        c.height = src.videoHeight || 720;
+        c.getContext('2d').drawImage(src, 0, 0);
+        c.toBlob((blob) => {
             const a = document.createElement('a');
-            a.href = url;
-            a.download = `ibcrs-snapshot-${new Date().getTime()}.jpg`;
-            document.body.appendChild(a);
+            a.href = URL.createObjectURL(blob);
+            a.download = 'ibcrs-snapshot-' + Date.now() + '.jpg';
             a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            URL.revokeObjectURL(a.href);
         });
-        
-        showAlert('Snapshot captured successfully!', 'success');
-        
-    } catch (error) {
-        console.error('Error capturing snapshot:', error);
+        showAlert('Snapshot captured!', 'success');
+    } catch (e) {
         showAlert('Failed to capture snapshot.', 'error');
     }
 }
@@ -324,31 +300,26 @@ function updateDetectedClasses(classes) {
 // ============ UI HELPERS ============
 function updateUIState() {
     if (isDetectionRunning) {
-        if (startBtn) startBtn.disabled = true;
-        if (stopBtn) stopBtn.disabled = false;
+        if (startWebcamBtn) { startWebcamBtn.disabled = true; startWebcamBtn.style.display = 'none'; }
+        if (stopWebcamBtn) { stopWebcamBtn.disabled = false; stopWebcamBtn.style.display = 'flex'; }
         if (snapshotBtn) snapshotBtn.disabled = false;
     } else {
-        if (startBtn) startBtn.disabled = false;
-        if (stopBtn) stopBtn.disabled = true;
+        if (startWebcamBtn) { startWebcamBtn.disabled = false; startWebcamBtn.style.display = 'flex'; }
+        if (stopWebcamBtn) { stopWebcamBtn.disabled = true; stopWebcamBtn.style.display = 'none'; }
         if (snapshotBtn) snapshotBtn.disabled = true;
     }
 }
 
 function setState(text, state) {
-    statusText.textContent = text;
-    if (state === 'active') {
-        statusIndicator.classList.add('active');
-    } else {
-        statusIndicator.classList.remove('active');
+    if (statusText) statusText.textContent = text;
+    if (statusIndicator) {
+        if (state === 'active') statusIndicator.classList.add('active');
+        else statusIndicator.classList.remove('active');
     }
 }
 
 function showLoading(show) {
-    if (show) {
-        loadingSpinner.style.display = 'flex';
-    } else {
-        loadingSpinner.style.display = 'none';
-    }
+    if (loadingSpinner) loadingSpinner.style.display = show ? 'flex' : 'none';
 }
 
 function showAlert(message, type = 'info') {
@@ -416,6 +387,8 @@ async function startWebcam() {
         }
         
         webcamFeed.srcObject = mediaStream;
+        const wrapper = document.getElementById('video-wrapper');
+        if (wrapper) wrapper.classList.add('has-feed');
         
         // Wait for video to be ready
         await new Promise((resolve) => {
@@ -427,8 +400,8 @@ async function startWebcam() {
         
         // Update UI
         isDetectionRunning = true;
-        if (startWebcamBtn) startWebcamBtn.style.display = 'none';
-        if (stopWebcamBtn) stopWebcamBtn.style.display = 'flex';
+        if (startWebcamBtn) { startWebcamBtn.disabled = true; startWebcamBtn.style.display = 'none'; }
+        if (stopWebcamBtn) { stopWebcamBtn.disabled = false; stopWebcamBtn.style.display = 'flex'; }
         
         if (detectionStatus) {
             detectionStatus.innerHTML = '<span style="color: #10b981;"><i class="fas fa-circle"></i> Online</span>';
@@ -472,10 +445,12 @@ function stopWebcam() {
         mediaStream.getTracks().forEach(track => track.stop());
         mediaStream = null;
     }
+    const wrapper = document.getElementById('video-wrapper');
+    if (wrapper) wrapper.classList.remove('has-feed');
     
     isDetectionRunning = false;
-    startWebcamBtn.style.display = 'flex';
-    stopWebcamBtn.style.display = 'none';
+    if (startWebcamBtn) { startWebcamBtn.disabled = false; startWebcamBtn.style.display = 'flex'; }
+    if (stopWebcamBtn) { stopWebcamBtn.disabled = true; stopWebcamBtn.style.display = 'none'; }
     
     if (detectionStatus) {
         detectionStatus.innerHTML = '<span style="color: #ef4444;"><i class="fas fa-circle"></i> Offline</span>';
@@ -620,7 +595,7 @@ function displayDetections(detections) {
 }
 
 function openEquipmentDetail(label) {
-    // Find the matching component page
+    // Find the matching component page and navigate
     const componentPage = equipmentMapping[label] || equipmentMapping[label.toLowerCase()];
     
     if (componentPage) {
@@ -685,27 +660,12 @@ document.head.appendChild(style);
 
 // ============ SECTION NAVIGATION ============
 function showSection(sectionId) {
-    const sections = document.querySelectorAll('.section');
-    sections.forEach(section => {
-        section.classList.remove('active');
-    });
-    
-    const navLinks = document.querySelectorAll('.nav-link');
-    navLinks.forEach(link => {
-        link.classList.remove('active');
-    });
-    
-    const targetSection = document.getElementById(sectionId);
-    if (targetSection) {
-        targetSection.classList.add('active');
-    }
-    
-    // Add active state to clicked nav link
-    const activeLink = document.querySelector(`.nav-link[onclick*="'${sectionId}'"]`);
-    if (activeLink) {
-        activeLink.classList.add('active');
-    }
-    
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+    const target = document.getElementById(sectionId);
+    if (target) target.classList.add('active');
+    const btn = document.querySelector('.nav-btn[data-tab="' + sectionId + '"]');
+    if (btn) btn.classList.add('active');
     window.scrollTo(0, 0);
 }
 
