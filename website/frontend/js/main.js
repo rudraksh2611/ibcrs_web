@@ -18,6 +18,13 @@ let frameCount = 0;
 let detectionCount = 0;
 let startTime = null;
 
+// detection mode flags & local model handles
+let useBackend = null;          // set after health check (true/false)
+let localModel = null;          // ultralytics JS model instance
+let localStream = null;         // MediaStream when using local webcam
+
+let localLoopId = null;         // requestAnimationFrame id for local inference
+
 // Equipment mapping for component pages
 const equipmentMapping = {
     'Camera': 'component_cam.html',
@@ -381,6 +388,17 @@ async function startWebcam() {
             return;
         }
 
+        // If backend is not available we may run a local model; ensure it's loaded
+        if (useBackend === false) {
+            try {
+                await initLocalModel();
+                showServerWarning('Using client-side model for detection');
+            } catch (e) {
+                // initLocalModel already showed warning/disabled controls
+                return;
+            }
+        }
+
         console.log('Requesting camera access...');
         // Request camera access
         mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -424,8 +442,28 @@ async function startWebcam() {
         console.log('Webcam ready, starting frame processing...');
         showAlert('Webcam started. Processing frames...', 'success');
         
-        // Start sending frames to API
-        processFrames();
+        // Start detection loop (backend or client)
+        if (useBackend === false) {
+            // client-side inference using ultralytics JS
+            // `track` method draws boxes automatically and calls callback with results
+            if (localModel && typeof localModel.track === 'function') {
+                localModel.track(webcamFeed, {
+                    camera: true,
+                    callback: (res) => {
+                        // results may be an array of one result
+                        const dets = convertLocalResults(res);
+                        displayDetections(dets);
+                        detectionCount = dets.length;
+                        if (detectionCountDisplay) detectionCountDisplay.textContent = detectionCount;
+                    }
+                });
+            } else {
+                // fallback to frame polling if track unavailable
+                processFrames();
+            }
+        } else {
+            processFrames();
+        }
         
     } catch (error) {
         console.error('Error accessing webcam:', error);
@@ -451,10 +489,25 @@ async function startWebcam() {
 }
 
 function stopWebcam() {
+    // stop camera stream
     if (mediaStream) {
         mediaStream.getTracks().forEach(track => track.stop());
         mediaStream = null;
     }
+
+    // if using localModel.track, attempt to stop it
+    if (localModel && typeof localModel.stop === 'function') {
+        try {
+            localModel.stop();
+        } catch(e) {
+            console.warn('Error stopping local model tracking', e);
+        }
+    }
+    if (localLoopId) {
+        cancelAnimationFrame(localLoopId);
+        localLoopId = null;
+    }
+
     const wrapper = document.getElementById('video-wrapper');
     if (wrapper) wrapper.classList.remove('has-feed');
     
@@ -495,11 +548,19 @@ async function processFrames() {
         const ctx = detectionCanvas.getContext('2d');
         ctx.drawImage(webcamFeed, 0, 0);
         
-        // Convert to base64 JPEG
-        const imageData = detectionCanvas.toDataURL('image/jpeg', 0.8);
-        
-        // Send to API
-        await detectFrame(imageData);
+        if (useBackend === false) {
+            // client-side inference
+            if (localModel) {
+                const results = await localModel.predict(detectionCanvas, {conf:0.3});
+                const dets = convertLocalResults(results);
+                displayDetections(dets);
+            }
+        } else {
+            // Convert to base64 JPEG
+            const imageData = detectionCanvas.toDataURL('image/jpeg', 0.8);
+            // Send to API
+            await detectFrame(imageData);
+        }
         
         frameCount++;
         if (frameCountDisplay) frameCountDisplay.textContent = frameCount;
@@ -604,6 +665,41 @@ function displayDetections(detections) {
     }
 }
 
+// helper to convert results from the web model into the format expected by displayDetections
+function convertLocalResults(results) {
+    const out = [];
+    if (!results) return out;
+    // results may be an array (one element per image/frame)
+    const r = Array.isArray(results) ? results[0] : results;
+    if (!r) return out;
+
+    // r.boxes might be an array of objects or a tensor-like structure
+    if (r.boxes) {
+        // if boxes.array exists, use it
+        let boxes = r.boxes;
+        if (typeof boxes.array === 'function') {
+            boxes = boxes.array();
+        }
+        if (Array.isArray(boxes)) {
+            boxes.forEach(b => {
+                const cls = b.cls !== undefined ? b.cls : (b[5] ?? null);
+                const conf = b.conf !== undefined ? b.conf : (b[4] ?? 0);
+                const label = (r.names && r.names[cls]) ? r.names[cls] : `class_${cls}`;
+                out.push({ class: label, label: label, confidence: conf });
+            });
+        }
+    } else if (r.classes) {
+        // fallback structure: parallel arrays
+        for (let i = 0; i < r.classes.length; i++) {
+            const cls = r.classes[i];
+            const conf = r.scores ? r.scores[i] : 0;
+            const label = (r.names && r.names[cls]) ? r.names[cls] : `class_${cls}`;
+            out.push({ class: label, label: label, confidence: conf });
+        }
+    }
+    return out;
+}
+
 function openEquipmentDetail(label) {
     // Find the matching component page and navigate
     const componentPage = equipmentMapping[label] || equipmentMapping[label.toLowerCase()];
@@ -617,16 +713,15 @@ function openEquipmentDetail(label) {
 
 // ============ SERVER HEALTH CHECK ============
 async function checkServerHealth() {
-    // if API_BASE_URL is the same as origin but the origin is a static host
-    // (GitHub Pages, etc.) there will be no `/api/health` endpoint available and
-    // the fetch will fail.  We catch that case and adjust the UI accordingly.
     try {
         const response = await fetch(`${API_BASE_URL}/api/health`);
         
         if (!response.ok) {
             console.warn('Server health check returned non-OK status');
+            useBackend = false;
             disableDetectionControls();
-            showServerWarning('Backend not reachable – detection is disabled.');
+            showServerWarning('Backend not reachable – falling back to client-side detection.');
+            await initLocalModel();
             return false;
         }
 
@@ -637,13 +732,15 @@ async function checkServerHealth() {
             showAlert('Model failed to load. Check server logs.', 'warning');
         }
 
+        useBackend = true;
         return true;
 
     } catch (error) {
         console.error('Server health check failed:', error);
+        useBackend = false;
         disableDetectionControls();
-        showServerWarning('Cannot connect to backend. Run the Flask server locally or
-point API_BASE_URL at a deployed instance.');
+        showServerWarning('Cannot connect to backend – trying client-side detection.');
+        await initLocalModel();
         return false;
     }
 }
@@ -661,6 +758,24 @@ function disableDetectionControls() {
     if (startWebcamBtn) startWebcamBtn.disabled = true;
     if (stopWebcamBtn) stopWebcamBtn.disabled = true;
     if (snapshotBtn) snapshotBtn.disabled = true;
+}
+
+// helper: load client-side YOLO model when necessary
+async function initLocalModel() {
+    if (localModel) return;
+    try {
+        const { YOLO } = await import('https://cdn.jsdelivr.net/npm/@ultralytics/web@latest/dist/ultralytics.min.js');
+        // model URL may be hosted by Ultralytics; using smallest 'n' model
+        localModel = await YOLO.load('https://ultralytics.com/assets/models/yolov8n.pt');
+        console.log('Local YOLO model loaded.');
+        // enable detection controls now that model is ready
+        if (startWebcamBtn) startWebcamBtn.disabled = false;
+    } catch (err) {
+        console.error('Failed to load local model', err);
+        showServerWarning('Client-side model load failed; detection unavailable.');
+        disableDetectionControls();
+        throw err;
+    }
 }
 
 // ============ CSS ANIMATIONS ============

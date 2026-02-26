@@ -10,10 +10,13 @@ A professional real-time object detection web application for identifying and tr
 - **About Page:** https://jagriti2325.github.io/IBCRS/about.html  
 - **Component Pages:** All 7 biotech components with detailed information
 
-> **Note:** Webcam detection features require the Python backend and therefore only work when the server is running (e.g. on `http://localhost:5000` or on a separate host).
-> The GitHub Pages preview is a **purely static site**; it displays informational pages only and cannot perform live detection because there is no backend available.
-
-> To enable detection from the online link you must deploy the Flask server to a web host (Heroku, Railway, Azure, etc.) and update the `API_BASE_URL` constant in `website/frontend/js/main.js` to point at that deployment.
+> **Note:**
+> - When the Python backend is available (localhost or a deployed server) the frontend will send frames to `/api/detect` exactly as before.
+> - **When no backend is reachable (for example on GitHub Pages)** the application now automatically falls back to a *client‑side* YOLOv8 inference engine powered by [Ultralytics Web](https://github.com/ultralytics/ultralytics/tree/main/ultralytics/web).
+>   This means the same interface will run entirely in the browser and perform live detection without any server, so the GitHub Pages link now supports detection directly from the page (webcam access required).
+>   The browser will download a small YOLOv8n model over the network; detection happens locally and no data is sent to any server.
+>
+> If you prefer to use a backend, you can still deploy the Flask server (Heroku, Railway, Azure, etc.) and either host the frontend on the same host or update the `API_BASE_URL` constant in `website/frontend/js/main.js` to point at your server.
 
 ## �🎯 About
 
