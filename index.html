@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="IBCRS - Intelligent BioTech Component Recognition System - AI-powered biotech equipment detection">
+    <title>IBCRS | Intelligent BioTech Component Recognition</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 100%);
+            color: #ffffff;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: rgba(15, 20, 25, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(0, 102, 255, 0.2);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+        .navbar-container { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+        .logo { font-size: 1.5rem; font-weight: bold; color: #0066ff; display: flex; align-items: center; gap: 10px; text-decoration: none; flex-shrink: 0; }
+        .logo svg { width: 44px; height: 44px; }
+        .logo:hover { color: #00d4ff; }
+        .nav-tabs { list-style: none; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+        .nav-tabs li button { color: #b8ccff; background: transparent; border: 2px solid rgba(0, 102, 255, 0.4); padding: 0.7rem 1.2rem; border-radius: 6px; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 0.6rem; transition: all 0.3s ease; white-space: nowrap; cursor: pointer; font-family: inherit; }
+        .nav-tabs li button:hover { color: #00d4ff; background: rgba(0, 102, 255, 0.15); border-color: #00d4ff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 102, 255, 0.2); }
+        .nav-tabs li button.active { color: #ffffff; background: linear-gradient(135deg, rgba(0, 102, 255, 0.4), rgba(0, 212, 255, 0.2)); border-color: #00d4ff; box-shadow: 0 0 15px rgba(0, 102, 255, 0.5); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .page-header { background: linear-gradient(135deg, rgba(0, 102, 255, 0.12), rgba(0, 212, 255, 0.08)); border: 1px solid rgba(0, 102, 255, 0.25); border-radius: 16px; padding: 2.5rem; margin-bottom: 2rem; text-align: center; backdrop-filter: blur(12px); }
+        .page-header h1 { font-size: 2rem; margin-bottom: 0.5rem; color: #fff; }
+        .page-header p { color: #a0aec0; font-size: 1.05rem; }
+        .page-header .tagline { color: #00d4ff; font-weight: 600; margin-top: 0.5rem; }
+        .section { background: rgba(26, 31, 46, 0.6); border: 1px solid rgba(0, 102, 255, 0.2); border-radius: 12px; padding: 2rem; margin-bottom: 1.5rem; backdrop-filter: blur(8px); }
+        .section h2 { color: #0066ff; font-size: 1.4rem; margin-bottom: 1rem; }
+        .section p { color: #b8c4d0; margin-bottom: 0.8rem; }
+        .detection-panel { display: grid; grid-template-columns: 1fr 320px; gap: 1.5rem; margin: 1.5rem 0; }
+        @media (max-width: 900px) { .detection-panel { grid-template-columns: 1fr; } }
+        .control-section { background: rgba(26, 31, 46, 0.6); border-radius: 12px; padding: 1.5rem; border: 1px solid rgba(0, 102, 255, 0.2); }
+        .control-section h3 { color: #00d4ff; margin-bottom: 1rem; font-size: 1.1rem; }
+        .video-display-area { position: relative; aspect-ratio: 16/9; background: #0a0e14; border-radius: 10px; overflow: hidden; border: 2px solid rgba(0, 102, 255, 0.2); margin-bottom: 1rem; display: flex; align-items: center; justify-content: center; }
+        #webcam-feed, #detection-canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .button-group { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+        .btn { padding: 0.75rem 1.4rem; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s ease; font-family: inherit; }
+        .btn-primary { background: linear-gradient(135deg, #0066ff, #0052cc); color: #fff; }
+        .btn-primary:hover:not(:disabled) { background: linear-gradient(135deg, #0077ff, #0066ff); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 102, 255, 0.4); }
+        .btn-danger { background: linear-gradient(135deg, #dc2626, #b91c1c); color: #fff; }
+        .btn-danger:hover:not(:disabled) { transform: translateY(-1px); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .stats-panel { display: flex; flex-direction: column; gap: 1rem; }
+        .detected-section { background: rgba(26, 31, 46, 0.6); border-radius: 10px; padding: 1rem; border: 1px solid rgba(0, 102, 255, 0.2); }
+        .detected-section h4 { color: #00d4ff; font-size: 0.95rem; margin-bottom: 0.8rem; }
+        .footer { background: rgba(15, 20, 25, 0.95); border-top: 1px solid rgba(0, 102, 255, 0.2); padding: 2rem; text-align: center; color: #a0aec0; margin-top: 3rem; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="#" class="logo">
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <radialGradient id="grad1" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" style="stop-color:#0066ff;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#00d4ff;stop-opacity:0.3" />
+                        </radialGradient>
+                    </defs>
+                    <rect width="100" height="100" rx="15" fill="#071221"/>
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="url(#grad1)" stroke-width="2" opacity="0.6"/>
+                    <circle cx="50" cy="50" r="35" fill="none" stroke="#0066ff" stroke-width="1.5" opacity="0.4"/>
+                    <circle cx="50" cy="50" r="20" fill="none" stroke="#0066ff" stroke-width="2"/>
+                    <path d="M 42 50 L 48 56 L 58 46" stroke="#10b981" stroke-width="2" fill="none" stroke-linecap="round"/>
+                </svg>
+                IBCRS
+            </a>
+            <ul class="nav-tabs">
+                <li><button class="nav-btn active" data-tab="home"><i class="fas fa-bullseye"></i> Detection</button></li>
+                <li><button class="nav-btn" data-tab="about"><i class="fas fa-book"></i> About</button></li>
+                <li><button class="nav-btn" data-tab="team"><i class="fas fa-users"></i> Team</button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- HOME/DETECTION TAB -->
+        <div id="home" class="tab-content active">
+            <div class="page-header">
+                <h1><i class="fas fa-bullseye"></i> Equipment Detection</h1>
+                <p>Real-Time AI-Powered Biotech Component Recognition</p>
+                <p class="tagline">Click Start Detection to begin</p>
+            </div>
+
+            <div class="detection-panel">
+                <div class="control-section">
+                    <h3><i class="fas fa-video"></i> Live Webcam Feed</h3>
+                    <div class="video-display-area" id="video-wrapper">
+                        <video id="webcam-feed" autoplay muted playsinline></video>
+                        <canvas id="detection-canvas"></canvas>
+                    </div>
+                    <div class="button-group">
+                        <button id="start-webcam-btn" class="btn btn-primary" onclick="startWebcam()">
+                            <i class="fas fa-play"></i> Start Detection
+                        </button>
+                        <button id="stop-webcam-btn" class="btn btn-danger" disabled onclick="stopWebcam()">
+                            <i class="fas fa-stop"></i> Stop Detection
+                        </button>
+                    </div>
+                </div>
+
+                <div class="stats-panel">
+                    <div class="detected-section">
+                        <h4><i class="fas fa-check-circle"></i> Detected Equipment</h4>
+                        <div id="detection-results" style="display: flex; flex-direction: column; gap: 0.8rem;">
+                            <p style="color: #a0aec0; font-size: 0.9rem;">No detections yet.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABOUT TAB -->
+        <div id="about" class="tab-content">
+            <div class="page-header">
+                <h1><i class="fas fa-book"></i> About IBCRS</h1>
+                <p>Intelligent BioTech Component Recognition System</p>
+            </div>
+            <div class="section">
+                <h2>What is IBCRS?</h2>
+                <p>IBCRS is an advanced AI-powered platform leveraging state-of-the-art computer vision to enable real-time, accurate detection of biotech instruments with unprecedented speed and precision.</p>
+                <p>Our system seamlessly integrates into laboratory workflows, providing researchers, technicians, and facility managers with powerful tools to streamline operations and accelerate scientific discovery.</p>
+            </div>
+        </div>
+
+        <!-- TEAM TAB -->
+        <div id="team" class="tab-content">
+            <div class="page-header">
+                <h1><i class="fas fa-users"></i> Meet Our Team</h1>
+                <p>World-Class Experts Dedicated to Excellence</p>
+            </div>
+            <div class="section">
+                <h2>Our Innovators</h2>
+                <p><strong>Jagriti Arora</strong> - 4th Year UG Student | AI/ML, Computer Vision | <a href="https://github.com/jagriti2325" style="color:#00d4ff;">GitHub</a></p>
+                <p><strong>Rudraksh Singh Bhadauria</strong> - 4th Year UG Student | AI/ML, Backend, Full Stack | <a href="https://github.com/rudraksh2611" style="color:#00d4ff;">GitHub</a></p>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2026 IBCRS - Intelligent BioTech Component Recognition System. All rights reserved.</p>
+        <p style="margin-top: 1rem; font-size: 0.9rem;">Powered by YOLOv8 • PyTorch • TensorFlow.js</p>
+    </footer>
+
+    <!-- Critical inline detection initialization -->
+    <script>
+        // Minimal fallback: ensure elements exist before main.js loads
+        window.addEventListener('DOMContentLoaded', function() {
+            const wrapper = document.getElementById('video-wrapper');
+            if (wrapper && !document.getElementById('webcam-feed')) {
+                const v = document.createElement('video');
+                v.id = 'webcam-feed';
+                v.autoplay = true;
+                v.muted = true;
+                v.playsInline = true;
+                v.style.width = '100%';
+                v.style.height = '100%';
+                wrapper.appendChild(v);
+            }
+            if (wrapper && !document.getElementById('detection-canvas')) {
+                const c = document.createElement('canvas');
+                c.id = 'detection-canvas';
+                c.style.width = '100%';
+                c.style.height = '100%';
+                wrapper.appendChild(c);
+            }
+        });
+
+        // Tab navigation
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const tab = this.getAttribute('data-tab');
+                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                const target = document.getElementById(tab);
+                if (target) target.classList.add('active');
+                this.classList.add('active');
+            });
+        });
+    </script>
+
+    <!-- Load TensorFlow.js and COCO-SSD for client-side detection -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+    <!-- Load main.js from website/frontend folder (as it's properly maintained there) -->
+    <script src="website/frontend/js/main.js"></script>
+</body>
+</html>
