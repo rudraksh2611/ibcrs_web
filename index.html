@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="IBCRS - Intelligent BioTech Component Recognition System - AI-powered biotech equipment detection">
     <title>IBCRS | Intelligent BioTech Component Recognition</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -13,331 +12,223 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 100%);
             color: #ffffff;
-            line-height: 1.6;
             min-height: 100vh;
         }
         .navbar {
             background: rgba(15, 20, 25, 0.95);
-            backdrop-filter: blur(10px);
             padding: 1rem 2rem;
             position: sticky;
             top: 0;
             z-index: 1000;
             border-bottom: 1px solid rgba(0, 102, 255, 0.2);
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
-        .navbar-container { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
-        .logo { font-size: 1.5rem; font-weight: bold; color: #0066ff; display: flex; align-items: center; gap: 10px; text-decoration: none; flex-shrink: 0; }
-        .logo svg { width: 44px; height: 44px; }
-        .logo:hover { color: #00d4ff; }
-        .nav-tabs { list-style: none; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
-        .nav-tabs li button { color: #b8ccff; background: transparent; border: 2px solid rgba(0, 102, 255, 0.4); padding: 0.7rem 1.2rem; border-radius: 6px; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 0.6rem; transition: all 0.3s ease; white-space: nowrap; cursor: pointer; font-family: inherit; }
-        .nav-tabs li button:hover { color: #00d4ff; background: rgba(0, 102, 255, 0.15); border-color: #00d4ff; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 102, 255, 0.2); }
-        .nav-tabs li button.active { color: #ffffff; background: linear-gradient(135deg, rgba(0, 102, 255, 0.4), rgba(0, 212, 255, 0.2)); border-color: #00d4ff; box-shadow: 0 0 15px rgba(0, 102, 255, 0.5); }
+        .navbar-container { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.5rem; font-weight: bold; color: #0066ff; text-decoration: none; }
+        .nav-tabs { list-style: none; display: flex; gap: 1rem; }
+        .nav-tabs button { background: transparent; border: 2px solid rgba(0, 102, 255, 0.4); color: #b8ccff; padding: 0.7rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .nav-tabs button:hover, .nav-tabs button.active { color: #00d4ff; border-color: #00d4ff; background: rgba(0, 102, 255, 0.15); }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content { display: none; }
         .tab-content.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .page-header { background: linear-gradient(135deg, rgba(0, 102, 255, 0.12), rgba(0, 212, 255, 0.08)); border: 1px solid rgba(0, 102, 255, 0.25); border-radius: 16px; padding: 2.5rem; margin-bottom: 2rem; text-align: center; backdrop-filter: blur(12px); }
-        .page-header h1 { font-size: 2rem; margin-bottom: 0.5rem; color: #fff; }
-        .page-header p { color: #a0aec0; font-size: 1.05rem; }
-        .page-header .tagline { color: #00d4ff; font-weight: 600; margin-top: 0.5rem; }
-        .section { background: rgba(26, 31, 46, 0.6); border: 1px solid rgba(0, 102, 255, 0.2); border-radius: 12px; padding: 2rem; margin-bottom: 1.5rem; backdrop-filter: blur(8px); }
-        .section h2 { color: #0066ff; font-size: 1.4rem; margin-bottom: 1rem; }
-        .section p { color: #b8c4d0; margin-bottom: 0.8rem; }
-        .detection-panel { display: grid; grid-template-columns: 1fr 320px; gap: 1.5rem; margin: 1.5rem 0; }
+        .page-header { background: rgba(0, 102, 255, 0.1); border: 1px solid rgba(0, 102, 255, 0.25); border-radius: 16px; padding: 2.5rem; margin-bottom: 2rem; text-align: center; }
+        .page-header h1 { font-size: 2rem; margin-bottom: 1rem; }
+        .detection-panel { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin: 2rem 0; }
         @media (max-width: 900px) { .detection-panel { grid-template-columns: 1fr; } }
-        .control-section { background: rgba(26, 31, 46, 0.6); border-radius: 12px; padding: 1.5rem; border: 1px solid rgba(0, 102, 255, 0.2); }
-        .control-section h3 { color: #00d4ff; margin-bottom: 1rem; font-size: 1.1rem; }
-        .video-display-area { position: relative; aspect-ratio: 16/9; background: #0a0e14; border-radius: 10px; overflow: hidden; border: 2px solid rgba(0, 102, 255, 0.2); margin-bottom: 1rem; display: flex; align-items: center; justify-content: center; }
-        #webcam-feed, #detection-canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .button-group { display: flex; gap: 0.8rem; flex-wrap: wrap; }
-        .btn { padding: 0.75rem 1.4rem; border-radius: 8px; font-weight: 600; font-size: 0.95rem; cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: all 0.2s ease; font-family: inherit; }
-        .btn-primary { background: linear-gradient(135deg, #0066ff, #0052cc); color: #fff; }
-        .btn-primary:hover:not(:disabled) { background: linear-gradient(135deg, #0077ff, #0066ff); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 102, 255, 0.4); }
-        .btn-danger { background: linear-gradient(135deg, #dc2626, #b91c1c); color: #fff; }
-        .btn-danger:hover:not(:disabled) { transform: translateY(-1px); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .stats-panel { display: flex; flex-direction: column; gap: 1rem; }
-        .detected-section { background: rgba(26, 31, 46, 0.6); border-radius: 10px; padding: 1rem; border: 1px solid rgba(0, 102, 255, 0.2); }
-        .detected-section h4 { color: #00d4ff; font-size: 0.95rem; margin-bottom: 0.8rem; }
-        .footer { background: rgba(15, 20, 25, 0.95); border-top: 1px solid rgba(0, 102, 255, 0.2); padding: 2rem; text-align: center; color: #a0aec0; margin-top: 3rem; }
+        .video-wrapper { background: #0a0e14; border-radius: 10px; overflow: hidden; border: 2px solid rgba(0, 102, 255, 0.2); margin-bottom: 1rem; aspect-ratio: 16/9; }
+        #webcam-feed, #detection-canvas { width: 100%; height: 100%; display: block; }
+        .button-group { display: flex; gap: 1rem; }
+        .btn { padding: 0.75rem 1.4rem; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; }
+        .btn-primary { background: #0066ff; color: #fff; }
+        .btn-primary:hover { background: #0077ff; }
+        .btn-danger { background: #dc2626; color: #fff; }
+        .btn-danger:hover { background: #b91c1c; }
+        .detection-results { background: rgba(26, 31, 46, 0.6); border-radius: 10px; padding: 1.5rem; border: 1px solid rgba(0, 102, 255, 0.2); }
+        .section { background: rgba(26, 31, 46, 0.6); border-radius: 12px; padding: 2rem; margin-bottom: 1.5rem; }
+        .section h2 { color: #0066ff; margin-bottom: 1rem; }
     </style>
 </head>
 <body>
     <nav class="navbar">
         <div class="navbar-container">
-            <a href="#" class="logo">
-                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <radialGradient id="grad1" cx="50%" cy="50%" r="50%">
-                            <stop offset="0%" style="stop-color:#0066ff;stop-opacity:1" />
-                            <stop offset="100%" style="stop-color:#00d4ff;stop-opacity:0.3" />
-                        </radialGradient>
-                    </defs>
-                    <rect width="100" height="100" rx="15" fill="#071221"/>
-                    <circle cx="50" cy="50" r="45" fill="none" stroke="url(#grad1)" stroke-width="2" opacity="0.6"/>
-                    <circle cx="50" cy="50" r="35" fill="none" stroke="#0066ff" stroke-width="1.5" opacity="0.4"/>
-                    <circle cx="50" cy="50" r="20" fill="none" stroke="#0066ff" stroke-width="2"/>
-                    <path d="M 42 50 L 48 56 L 58 46" stroke="#10b981" stroke-width="2" fill="none" stroke-linecap="round"/>
-                </svg>
-                IBCRS
-            </a>
+            <a href="#" class="logo"><i class="fas fa-robot"></i> IBCRS</a>
             <ul class="nav-tabs">
-                <li><button class="nav-btn active" data-tab="home"><i class="fas fa-bullseye"></i> Detection</button></li>
-                <li><button class="nav-btn" data-tab="about"><i class="fas fa-book"></i> About</button></li>
-                <li><button class="nav-btn" data-tab="team"><i class="fas fa-users"></i> Team</button></li>
+                <li><button class="nav-btn active" data-tab="home" onclick="switchTab('home')"><i class="fas fa-bullseye"></i> Detection</button></li>
+                <li><button class="nav-btn" data-tab="about" onclick="switchTab('about')"><i class="fas fa-book"></i> About</button></li>
+                <li><button class="nav-btn" data-tab="team" onclick="switchTab('team')"><i class="fas fa-users"></i> Team</button></li>
             </ul>
         </div>
     </nav>
 
     <div class="container">
-        <!-- HOME/DETECTION TAB -->
+        <!-- HOME TAB -->
         <div id="home" class="tab-content active">
             <div class="page-header">
-                <h1><i class="fas fa-bullseye"></i> Equipment Detection</h1>
+                <h1>Equipment Detection System</h1>
                 <p>Real-Time AI-Powered Biotech Component Recognition</p>
-                <p class="tagline">Click Start Detection to begin</p>
             </div>
 
             <div class="detection-panel">
-                <div class="control-section">
-                    <h3><i class="fas fa-video"></i> Live Webcam Feed</h3>
-                    <div class="video-display-area" id="video-wrapper">
+                <div>
+                    <h3 style="margin-bottom: 1rem; color: #00d4ff;">Live Webcam</h3>
+                    <div class="video-wrapper">
                         <video id="webcam-feed" autoplay muted playsinline></video>
-                        <canvas id="detection-canvas"></canvas>
+                        <canvas id="detection-canvas" style="display:none;"></canvas>
                     </div>
                     <div class="button-group">
-                        <button id="start-webcam-btn" class="btn btn-primary" onclick="startWebcam()">
-                            <i class="fas fa-play"></i> Start Detection
+                        <button id="start-btn" class="btn btn-primary" onclick="startWebcam()">
+                            <i class="fas fa-play"></i> Start
                         </button>
-                        <button id="stop-webcam-btn" class="btn btn-danger" disabled style="display:none;" onclick="stopWebcam()">
-                            <i class="fas fa-stop"></i> Stop Detection
+                        <button id="stop-btn" class="btn btn-danger" style="display:none;" onclick="stopWebcam()">
+                            <i class="fas fa-stop"></i> Stop
                         </button>
                     </div>
                 </div>
 
-                <div class="stats-panel">
-                    <div class="detected-section">
-                        <h4><i class="fas fa-check-circle"></i> Detected Equipment</h4>
-                        <div id="detection-results" style="display: flex; flex-direction: column; gap: 0.8rem;">
-                            <p style="color: #a0aec0; font-size: 0.9rem;">No detections yet.</p>
-                        </div>
-                    </div>
+                <div class="detection-results">
+                    <h4 style="color: #00d4ff; margin-bottom: 1rem;"><i class="fas fa-check-circle"></i> Detections</h4>
+                    <div id="detection-results" style="color: #a0aec0;">No detections yet</div>
                 </div>
             </div>
         </div>
 
         <!-- ABOUT TAB -->
         <div id="about" class="tab-content">
-            <div class="page-header">
-                <h1><i class="fas fa-book"></i> About IBCRS</h1>
-                <p>Intelligent BioTech Component Recognition System</p>
-            </div>
+            <div class="page-header"><h1>About IBCRS</h1></div>
             <div class="section">
                 <h2>What is IBCRS?</h2>
-                <p>IBCRS is an advanced AI-powered platform leveraging state-of-the-art computer vision to enable real-time, accurate detection of biotech instruments with unprecedented speed and precision.</p>
-                <p>Our system seamlessly integrates into laboratory workflows, providing researchers, technicians, and facility managers with powerful tools to streamline operations and accelerate scientific discovery.</p>
+                <p>IBCRS is an AI-powered platform for real-time detection and recognition of biotech laboratory equipment using advanced computer vision.</p>
             </div>
         </div>
 
         <!-- TEAM TAB -->
         <div id="team" class="tab-content">
-            <div class="page-header">
-                <h1><i class="fas fa-users"></i> Meet Our Team</h1>
-                <p>World-Class Experts Dedicated to Excellence</p>
-            </div>
+            <div class="page-header"><h1>Team</h1></div>
             <div class="section">
                 <h2>Our Innovators</h2>
-                <p><strong>Jagriti Arora</strong> - 4th Year UG Student | AI/ML, Computer Vision | <a href="https://github.com/jagriti2325" style="color:#00d4ff;">GitHub</a></p>
-                <p><strong>Rudraksh Singh Bhadauria</strong> - 4th Year UG Student | AI/ML, Backend, Full Stack | <a href="https://github.com/rudraksh2611" style="color:#00d4ff;">GitHub</a></p>
+                <p><strong>Jagriti Arora</strong> - AI/ML Specialist</p>
+                <p><strong>Rudraksh Singh Bhadauria</strong> - Full Stack Developer</p>
             </div>
         </div>
     </div>
 
-    <footer class="footer">
-        <p>&copy; 2026 IBCRS - Intelligent BioTech Component Recognition System. All rights reserved.</p>
-        <p style="margin-top: 1rem; font-size: 0.9rem;">Powered by YOLOv8 • PyTorch • TensorFlow.js</p>
-    </footer>
-
-    <!-- Load TensorFlow.js and COCO-SSD CDN -->
+    <!-- Load CDN libraries first -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
 
-    <!-- INLINE CRITICAL DETECTION FUNCTIONS -->
+    <!-- INLINE ALL FUNCTIONS AT PAGE LOAD -->
     <script>
-        // Global state
+        // Global variables
         let mediaStream = null;
         let localModel = null;
         let isDetectionRunning = false;
         let startTime = null;
         let frameCount = 0;
-        let detectionCount = 0;
 
-        // Initialize elements on DOM ready
-        document.addEventListener('DOMContentLoaded', function() {
-            // Ensure video and canvas exist
-            const wrapper = document.getElementById('video-wrapper');
-            if (wrapper) {
-                if (!document.getElementById('webcam-feed')) {
-                    const v = document.createElement('video');
-                    v.id = 'webcam-feed';
-                    v.autoplay = true;
-                    v.muted = true;
-                    v.playsInline = true;
-                    v.style.width = '100%';
-                    v.style.height = '100%';
-                    wrapper.appendChild(v);
-                }
-                if (!document.getElementById('detection-canvas')) {
-                    const c = document.createElement('canvas');
-                    c.id = 'detection-canvas';
-                    c.style.width = '100%';
-                    c.style.height = '100%';
-                    wrapper.appendChild(c);
-                }
-            }
+        // Tab switching function
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+            event.target.classList.add('active');
+        }
 
-            // Tab navigation
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const tab = this.getAttribute('data-tab');
-                    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-                    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-                    const target = document.getElementById(tab);
-                    if (target) target.classList.add('active');
-                    this.classList.add('active');
-                });
-            });
-
-            // Initialize models
-            initLocalModel().catch(e => console.warn('Model init failed:', e));
-        });
-
-        // Start webcam detection
+        // Start webcam
         async function startWebcam() {
             try {
-                console.log('Starting webcam...');
-                const webcamFeed = document.getElementById('webcam-feed');
+                console.log('Requesting camera...');
+                const video = document.getElementById('webcam-feed');
                 
-                if (!navigator.mediaDevices?.getUserMedia) {
-                    alert('Webcam not supported in this browser');
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    alert('Camera not supported');
                     return;
                 }
 
                 mediaStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-                    audio: false
+                    video: { width: { ideal: 1280 }, height: { ideal: 720 } }
                 });
 
-                webcamFeed.srcObject = mediaStream;
-                const wrapper = document.getElementById('video-wrapper');
-                if (wrapper) wrapper.classList.add('has-feed');
+                video.srcObject = mediaStream;
+                console.log('Camera started');
 
-                // Wait for metadata
-                await new Promise(resolve => {
-                    webcamFeed.onloadedmetadata = () => {
-                        console.log('Webcam ready');
-                        resolve();
-                    };
-                });
+                // Wait for video to load
+                await new Promise(r => { video.onloadedmetadata = r; });
 
                 isDetectionRunning = true;
-                const startBtn = document.getElementById('start-webcam-btn');
-                const stopBtn = document.getElementById('stop-webcam-btn');
-                if (startBtn) startBtn.style.display = 'none';
-                if (stopBtn) { stopBtn.style.display = 'inline-flex'; stopBtn.disabled = false; }
+                document.getElementById('start-btn').style.display = 'none';
+                document.getElementById('stop-btn').style.display = 'inline-flex';
 
-                startTime = Date.now();
-                frameCount = 0;
-                detectionCount = 0;
-
-                alert('Webcam started! Processing frames...');
-                processFrames();
-            } catch (error) {
-                console.error('Webcam error:', error);
-                alert(`Error: ${error.message}`);
+                alert('Camera started!');
+                detectFrames();
+            } catch (err) {
+                console.error('Camera error:', err);
+                alert('Camera error: ' + err.message);
             }
         }
 
         // Stop webcam
         function stopWebcam() {
             if (mediaStream) {
-                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream.getTracks().forEach(t => t.stop());
                 mediaStream = null;
             }
-
-            const wrapper = document.getElementById('video-wrapper');
-            if (wrapper) wrapper.classList.remove('has-feed');
-
             isDetectionRunning = false;
-            const startBtn = document.getElementById('start-webcam-btn');
-            const stopBtn = document.getElementById('stop-webcam-btn');
-            if (startBtn) startBtn.style.display = 'inline-flex';
-            if (stopBtn) { stopBtn.style.display = 'none'; stopBtn.disabled = true; }
-
-            alert('Webcam stopped');
+            document.getElementById('start-btn').style.display = 'inline-flex';
+            document.getElementById('stop-btn').style.display = 'none';
+            alert('Camera stopped');
         }
 
-        // Process frames for detection
-        async function processFrames() {
+        // Detect objects in frames
+        async function detectFrames() {
             if (!isDetectionRunning) return;
 
             try {
-                const webcamFeed = document.getElementById('webcam-feed');
+                const video = document.getElementById('webcam-feed');
                 const canvas = document.getElementById('detection-canvas');
-                const results = document.getElementById('detection-results');
+                const resultsDiv = document.getElementById('detection-results');
 
-                if (!canvas || !webcamFeed.srcObject) return;
+                if (!video.srcObject) return;
 
-                canvas.width = webcamFeed.videoWidth;
-                canvas.height = webcamFeed.videoHeight;
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
 
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(webcamFeed, 0, 0);
-
-                // Run detection using COCO-SSD
                 if (localModel) {
                     const predictions = await localModel.detect(canvas);
-                    if (results) {
-                        if (predictions.length === 0) {
-                            results.innerHTML = '<p style="color: #a0aec0;">No objects detected</p>';
-                        } else {
-                            let html = '<div style="display: flex; flex-direction: column; gap: 0.5rem;">';
-                            predictions.forEach(pred => {
-                                const conf = (pred.score * 100).toFixed(1);
-                                html += `<div style="background: rgba(0, 102, 255, 0.2); padding: 0.5rem; border-radius: 6px; border-left: 3px solid #0066ff;">
-                                    <strong style="color: #00d4ff;">${pred.class}</strong> - ${conf}%
-                                </div>`;
-                            });
-                            html += '</div>';
-                            results.innerHTML = html;
-                        }
+                    
+                    if (predictions.length === 0) {
+                        resultsDiv.innerHTML = '<p style="color: #a0aec0;">No objects detected</p>';
+                    } else {
+                        let html = '';
+                        predictions.forEach(p => {
+                            html += `<div style="background: rgba(0,102,255,0.2); padding: 0.7rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 3px solid #0066ff;">
+                                <strong style="color: #00d4ff;">${p.class}</strong> - <span style="color: #10b981;">${(p.score * 100).toFixed(1)}%</span>
+                            </div>`;
+                        });
+                        resultsDiv.innerHTML = html;
                     }
                 }
 
                 frameCount++;
-                setTimeout(processFrames, 100);
-            } catch (error) {
-                console.error('Frame processing error:', error);
-                if (isDetectionRunning) setTimeout(processFrames, 100);
+                setTimeout(detectFrames, 150);
+            } catch (err) {
+                console.error('Detection error:', err);
+                if (isDetectionRunning) setTimeout(detectFrames, 150);
             }
         }
 
-        // Initialize COCO-SSD model
-        async function initLocalModel() {
+        // Load model on page load
+        window.addEventListener('load', async () => {
+            console.log('Page loaded. Loading COCO-SSD model...');
             try {
-                if (!window.cocoSsd) {
-                    console.warn('COCO-SSD not loaded yet');
-                    return;
+                if (window.cocoSsd) {
+                    localModel = await cocoSsd.load();
+                    console.log('Model loaded!');
+                } else {
+                    console.warn('COCO-SSD not available');
                 }
-                console.log('Loading COCO-SSD model...');
-                localModel = await cocoSsd.load();
-                console.log('COCO-SSD model loaded successfully');
-            } catch (error) {
-                console.error('Failed to load model:', error);
+            } catch (err) {
+                console.error('Model load failed:', err);
             }
-        }
+        });
     </script>
 </body>
 </html>
