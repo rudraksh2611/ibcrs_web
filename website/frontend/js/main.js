@@ -868,7 +868,6 @@ async function initLocalModel() {
         throw err;
     }
 }
-}
 
 // ============ CSS ANIMATIONS ============
 const style = document.createElement('style');
