@@ -898,13 +898,37 @@ document.head.appendChild(style);
 
 // ============ SECTION NAVIGATION ============
 function showSection(sectionId) {
+    // Support logical aliases: 'detection' lives inside the Home tab
+    const aliasMap = {
+        'detection': 'home',
+        'innovators': 'team'
+    };
+
+    const resolved = aliasMap[sectionId] || sectionId;
+
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-    const target = document.getElementById(sectionId);
+
+    const target = document.getElementById(resolved);
     if (target) target.classList.add('active');
-    const btn = document.querySelector('.nav-btn[data-tab="' + sectionId + '"]');
+
+    // Mark the corresponding nav button active (if present)
+    const btn = document.querySelector('.nav-btn[data-tab="' + sectionId + '"]') || document.querySelector('.nav-btn[data-tab="' + resolved + '"]');
     if (btn) btn.classList.add('active');
-    window.scrollTo(0, 0);
+
+    // If the user asked for the detection alias, scroll the detection panel into view
+    if (sectionId === 'detection') {
+        const wrapper = document.getElementById('video-wrapper');
+        if (wrapper) {
+            wrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // attempt to start webcam (user must still allow camera)
+            if (typeof startWebcam === 'function') {
+                setTimeout(() => { try { startWebcam(); } catch (e) { console.warn('Auto-start failed', e); } }, 250);
+            }
+        }
+    } else {
+        window.scrollTo(0, 0);
+    }
 }
 
 // ============ INITIAL STATE ============
