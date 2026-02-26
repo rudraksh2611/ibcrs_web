@@ -464,13 +464,12 @@ async function startWebcam() {
         
         // Start detection loop (backend or client)
         if (useBackend === false) {
-            // client-side inference using ultralytics JS
-            // `track` method draws boxes automatically and calls callback with results
-            if (localModel && typeof localModel.track === 'function') {
-                localModel.track(webcamFeed, {
+            // client-side inference
+            if (localModel && localModel.type === 'ultralytics' && typeof localModel.model.track === 'function') {
+                // Ultralytics provides a `track` helper which can draw on the video element
+                localModel.model.track(webcamFeed, {
                     camera: true,
                     callback: (res) => {
-                        // results may be an array of one result
                         const dets = convertLocalResults(res);
                         displayDetections(dets);
                         detectionCount = dets.length;
@@ -478,7 +477,7 @@ async function startWebcam() {
                     }
                 });
             } else {
-                // fallback to frame polling if track unavailable
+                // fallback to frame polling (works for COCO-SSD and Ultralytics predict)
                 processFrames();
             }
         } else {
@@ -571,9 +570,17 @@ async function processFrames() {
         if (useBackend === false) {
             // client-side inference
             if (localModel) {
-                const results = await localModel.predict(detectionCanvas, {conf:0.3});
-                const dets = convertLocalResults(results);
-                displayDetections(dets);
+                if (localModel.type === 'coco' && localModel.model && typeof localModel.model.detect === 'function') {
+                    const results = await localModel.model.detect(detectionCanvas);
+                    const dets = convertLocalResults(results);
+                    displayDetections(dets);
+                } else if (localModel.type === 'ultralytics' && localModel.model) {
+                    if (typeof localModel.model.predict === 'function') {
+                        const results = await localModel.model.predict(detectionCanvas, {conf:0.3});
+                        const dets = convertLocalResults(results);
+                        displayDetections(dets);
+                    }
+                }
             }
         } else {
             // Convert to base64 JPEG
@@ -689,17 +696,23 @@ function displayDetections(detections) {
 function convertLocalResults(results) {
     const out = [];
     if (!results) return out;
-    // results may be an array (one element per image/frame)
+
+    // Case A: results is an array of COCO detections [{class, score, bbox}, ...]
+    if (Array.isArray(results) && results.length > 0 && results[0].hasOwnProperty('class')) {
+        results.forEach(d => {
+            out.push({ class: d.class, label: d.class, confidence: d.score ?? d.confidence ?? 0 });
+        });
+        return out;
+    }
+
+    // Case B: Ultralytics-style result object or array containing a result
     const r = Array.isArray(results) ? results[0] : results;
     if (!r) return out;
 
-    // r.boxes might be an array of objects or a tensor-like structure
+    // r.boxes might be an array-like structure
     if (r.boxes) {
-        // if boxes.array exists, use it
         let boxes = r.boxes;
-        if (typeof boxes.array === 'function') {
-            boxes = boxes.array();
-        }
+        if (typeof boxes.array === 'function') boxes = boxes.array();
         if (Array.isArray(boxes)) {
             boxes.forEach(b => {
                 const cls = b.cls !== undefined ? b.cls : (b[5] ?? null);
@@ -709,7 +722,6 @@ function convertLocalResults(results) {
             });
         }
     } else if (r.classes) {
-        // fallback structure: parallel arrays
         for (let i = 0; i < r.classes.length; i++) {
             const cls = r.classes[i];
             const conf = r.scores ? r.scores[i] : 0;
@@ -717,6 +729,7 @@ function convertLocalResults(results) {
             out.push({ class: label, label: label, confidence: conf });
         }
     }
+
     return out;
 }
 
@@ -779,24 +792,49 @@ function disableDetectionControls() {
     if (stopWebcamBtn) stopWebcamBtn.disabled = true;
     if (snapshotBtn) snapshotBtn.disabled = true;
 }
-        // Keep the Start button enabled so users can always attempt client-side detection.
-        // Disable Stop and Snapshot to prevent actions when backend/model isn't ready.
+// Initialize a client-side model. Try Ultralytics Web first, then fall back to COCO-SSD.
+async function initLocalModel() {
+    if (localModel) return;
+
+    // Try Ultralytics Web (if available)
+    try {
+        const mod = await import('https://cdn.jsdelivr.net/npm/@ultralytics/web@latest/dist/ultralytics.min.js');
+        const YOLO = mod && (mod.YOLO || mod.default?.YOLO || mod);
+        if (YOLO && typeof YOLO.load === 'function') {
+            try {
+                const model = await YOLO.load('https://ultralytics.com/assets/models/yolov8n.pt');
+                localModel = { type: 'ultralytics', model };
+                console.log('Loaded Ultralytics web model for client-side detection.');
+                if (startWebcamBtn) startWebcamBtn.disabled = false;
+                return;
+            } catch (e) {
+                console.warn('Ultralytics model load failed, falling back to COCO-SSD:', e);
+            }
+        }
+    } catch (err) {
+        console.warn('Ultralytics web not available:', err);
+    }
+
+    // Fall back to coco-ssd (loaded via script tag)
+    try {
+        if (window.cocoSsd && typeof window.cocoSsd.load === 'function') {
+            const model = await cocoSsd.load();
+            localModel = { type: 'coco', model };
+            console.log('Loaded COCO-SSD model for client-side detection.');
+            if (startWebcamBtn) startWebcamBtn.disabled = false;
+            return;
+        } else {
+            throw new Error('cocoSsd not available');
+        }
+    } catch (err) {
+        console.error('Failed to load client-side models', err);
+        showServerWarning('Client-side model load failed; detection unavailable.');
+        // Keep start enabled so users can still view webcam, but disable detection controls
         if (stopWebcamBtn) stopWebcamBtn.disabled = true;
         if (snapshotBtn) snapshotBtn.disabled = true;
-    if (localModel) return;
-    try {
-        const { YOLO } = await import('https://cdn.jsdelivr.net/npm/@ultralytics/web@latest/dist/ultralytics.min.js');
-        // model URL may be hosted by Ultralytics; using smallest 'n' model
-        localModel = await YOLO.load('https://ultralytics.com/assets/models/yolov8n.pt');
-        console.log('Local YOLO model loaded.');
-        // enable detection controls now that model is ready
-        if (startWebcamBtn) startWebcamBtn.disabled = false;
-    } catch (err) {
-        console.error('Failed to load local model', err);
-        showServerWarning('Client-side model load failed; detection unavailable.');
-        disableDetectionControls();
         throw err;
     }
+}
 }
 
 // ============ CSS ANIMATIONS ============

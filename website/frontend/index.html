@@ -545,6 +545,9 @@
         </p>
     </footer>
 
+    <!-- Load TensorFlow.js and COCO-SSD for reliable client-side detection fallback on static hosts -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
     <script src="js/main.js"></script>
     <script>
         // Tab switching + logo home
