@@ -788,7 +788,7 @@ function showServerWarning(message) {
 }
 
 function disableDetectionControls() {
-    if (startWebcamBtn) startWebcamBtn.disabled = true;
+    // Keep the Start button enabled so users can always attempt client-side detection.
     if (stopWebcamBtn) stopWebcamBtn.disabled = true;
     if (snapshotBtn) snapshotBtn.disabled = true;
 }
