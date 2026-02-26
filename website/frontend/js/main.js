@@ -83,6 +83,28 @@ function initializeDOMElements() {
     detectionResults = document.getElementById('detection-results');
     loadingSpinner = document.getElementById('loading-spinner');
     navLinks = document.querySelectorAll('.nav-btn[data-tab], .nav-link');
+
+    // If video or canvas elements are missing on some deployed pages, create fallbacks
+    const wrapper = document.getElementById('video-wrapper') || document.querySelector('.video-display-area') || document.querySelector('.video-wrapper');
+    if (!webcamFeed && wrapper) {
+        const v = document.createElement('video');
+        v.id = 'webcam-feed';
+        v.autoplay = true;
+        v.muted = true;
+        v.playsInline = true;
+        v.style.width = '100%';
+        v.style.height = '100%';
+        wrapper.insertBefore(v, wrapper.firstChild);
+        webcamFeed = v;
+    }
+    if (!detectionCanvas && wrapper) {
+        const c = document.createElement('canvas');
+        c.id = 'detection-canvas';
+        c.style.width = '100%';
+        c.style.height = '100%';
+        wrapper.appendChild(c);
+        detectionCanvas = c;
+    }
 }
 
 // global error handlers: surface errors visibly on the static page so you can
