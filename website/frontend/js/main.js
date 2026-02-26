@@ -779,9 +779,10 @@ function disableDetectionControls() {
     if (stopWebcamBtn) stopWebcamBtn.disabled = true;
     if (snapshotBtn) snapshotBtn.disabled = true;
 }
-
-// helper: load client-side YOLO model when necessary
-async function initLocalModel() {
+        // Keep the Start button enabled so users can always attempt client-side detection.
+        // Disable Stop and Snapshot to prevent actions when backend/model isn't ready.
+        if (stopWebcamBtn) stopWebcamBtn.disabled = true;
+        if (snapshotBtn) snapshotBtn.disabled = true;
     if (localModel) return;
     try {
         const { YOLO } = await import('https://cdn.jsdelivr.net/npm/@ultralytics/web@latest/dist/ultralytics.min.js');
