@@ -6,8 +6,6 @@
     <meta name="description" content="IBCRS - Intelligent BioTech Component Recognition System - AI-powered biotech equipment detection">
     <title>IBCRS | Intelligent BioTech Component Recognition</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html { scroll-behavior: smooth; }
@@ -113,7 +111,7 @@
                         <button id="start-webcam-btn" class="btn btn-primary" onclick="startWebcam()">
                             <i class="fas fa-play"></i> Start Detection
                         </button>
-                        <button id="stop-webcam-btn" class="btn btn-danger" disabled onclick="stopWebcam()">
+                        <button id="stop-webcam-btn" class="btn btn-danger" disabled style="display:none;" onclick="stopWebcam()">
                             <i class="fas fa-stop"></i> Stop Detection
                         </button>
                     </div>
@@ -162,47 +160,184 @@
         <p style="margin-top: 1rem; font-size: 0.9rem;">Powered by YOLOv8 • PyTorch • TensorFlow.js</p>
     </footer>
 
-    <!-- Critical inline detection initialization -->
-    <script>
-        // Minimal fallback: ensure elements exist before main.js loads
-        window.addEventListener('DOMContentLoaded', function() {
-            const wrapper = document.getElementById('video-wrapper');
-            if (wrapper && !document.getElementById('webcam-feed')) {
-                const v = document.createElement('video');
-                v.id = 'webcam-feed';
-                v.autoplay = true;
-                v.muted = true;
-                v.playsInline = true;
-                v.style.width = '100%';
-                v.style.height = '100%';
-                wrapper.appendChild(v);
-            }
-            if (wrapper && !document.getElementById('detection-canvas')) {
-                const c = document.createElement('canvas');
-                c.id = 'detection-canvas';
-                c.style.width = '100%';
-                c.style.height = '100%';
-                wrapper.appendChild(c);
-            }
-        });
-
-        // Tab navigation
-        document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const tab = this.getAttribute('data-tab');
-                document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-                const target = document.getElementById(tab);
-                if (target) target.classList.add('active');
-                this.classList.add('active');
-            });
-        });
-    </script>
-
-    <!-- Load TensorFlow.js and COCO-SSD for client-side detection -->
+    <!-- Load TensorFlow.js and COCO-SSD CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
-    <!-- Load main.js from website/frontend folder (as it's properly maintained there) -->
-    <script src="website/frontend/js/main.js"></script>
+
+    <!-- INLINE CRITICAL DETECTION FUNCTIONS -->
+    <script>
+        // Global state
+        let mediaStream = null;
+        let localModel = null;
+        let isDetectionRunning = false;
+        let startTime = null;
+        let frameCount = 0;
+        let detectionCount = 0;
+
+        // Initialize elements on DOM ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Ensure video and canvas exist
+            const wrapper = document.getElementById('video-wrapper');
+            if (wrapper) {
+                if (!document.getElementById('webcam-feed')) {
+                    const v = document.createElement('video');
+                    v.id = 'webcam-feed';
+                    v.autoplay = true;
+                    v.muted = true;
+                    v.playsInline = true;
+                    v.style.width = '100%';
+                    v.style.height = '100%';
+                    wrapper.appendChild(v);
+                }
+                if (!document.getElementById('detection-canvas')) {
+                    const c = document.createElement('canvas');
+                    c.id = 'detection-canvas';
+                    c.style.width = '100%';
+                    c.style.height = '100%';
+                    wrapper.appendChild(c);
+                }
+            }
+
+            // Tab navigation
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const tab = this.getAttribute('data-tab');
+                    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                    const target = document.getElementById(tab);
+                    if (target) target.classList.add('active');
+                    this.classList.add('active');
+                });
+            });
+
+            // Initialize models
+            initLocalModel().catch(e => console.warn('Model init failed:', e));
+        });
+
+        // Start webcam detection
+        async function startWebcam() {
+            try {
+                console.log('Starting webcam...');
+                const webcamFeed = document.getElementById('webcam-feed');
+                
+                if (!navigator.mediaDevices?.getUserMedia) {
+                    alert('Webcam not supported in this browser');
+                    return;
+                }
+
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+                    audio: false
+                });
+
+                webcamFeed.srcObject = mediaStream;
+                const wrapper = document.getElementById('video-wrapper');
+                if (wrapper) wrapper.classList.add('has-feed');
+
+                // Wait for metadata
+                await new Promise(resolve => {
+                    webcamFeed.onloadedmetadata = () => {
+                        console.log('Webcam ready');
+                        resolve();
+                    };
+                });
+
+                isDetectionRunning = true;
+                const startBtn = document.getElementById('start-webcam-btn');
+                const stopBtn = document.getElementById('stop-webcam-btn');
+                if (startBtn) startBtn.style.display = 'none';
+                if (stopBtn) { stopBtn.style.display = 'inline-flex'; stopBtn.disabled = false; }
+
+                startTime = Date.now();
+                frameCount = 0;
+                detectionCount = 0;
+
+                alert('Webcam started! Processing frames...');
+                processFrames();
+            } catch (error) {
+                console.error('Webcam error:', error);
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // Stop webcam
+        function stopWebcam() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+
+            const wrapper = document.getElementById('video-wrapper');
+            if (wrapper) wrapper.classList.remove('has-feed');
+
+            isDetectionRunning = false;
+            const startBtn = document.getElementById('start-webcam-btn');
+            const stopBtn = document.getElementById('stop-webcam-btn');
+            if (startBtn) startBtn.style.display = 'inline-flex';
+            if (stopBtn) { stopBtn.style.display = 'none'; stopBtn.disabled = true; }
+
+            alert('Webcam stopped');
+        }
+
+        // Process frames for detection
+        async function processFrames() {
+            if (!isDetectionRunning) return;
+
+            try {
+                const webcamFeed = document.getElementById('webcam-feed');
+                const canvas = document.getElementById('detection-canvas');
+                const results = document.getElementById('detection-results');
+
+                if (!canvas || !webcamFeed.srcObject) return;
+
+                canvas.width = webcamFeed.videoWidth;
+                canvas.height = webcamFeed.videoHeight;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(webcamFeed, 0, 0);
+
+                // Run detection using COCO-SSD
+                if (localModel) {
+                    const predictions = await localModel.detect(canvas);
+                    if (results) {
+                        if (predictions.length === 0) {
+                            results.innerHTML = '<p style="color: #a0aec0;">No objects detected</p>';
+                        } else {
+                            let html = '<div style="display: flex; flex-direction: column; gap: 0.5rem;">';
+                            predictions.forEach(pred => {
+                                const conf = (pred.score * 100).toFixed(1);
+                                html += `<div style="background: rgba(0, 102, 255, 0.2); padding: 0.5rem; border-radius: 6px; border-left: 3px solid #0066ff;">
+                                    <strong style="color: #00d4ff;">${pred.class}</strong> - ${conf}%
+                                </div>`;
+                            });
+                            html += '</div>';
+                            results.innerHTML = html;
+                        }
+                    }
+                }
+
+                frameCount++;
+                setTimeout(processFrames, 100);
+            } catch (error) {
+                console.error('Frame processing error:', error);
+                if (isDetectionRunning) setTimeout(processFrames, 100);
+            }
+        }
+
+        // Initialize COCO-SSD model
+        async function initLocalModel() {
+            try {
+                if (!window.cocoSsd) {
+                    console.warn('COCO-SSD not loaded yet');
+                    return;
+                }
+                console.log('Loading COCO-SSD model...');
+                localModel = await cocoSsd.load();
+                console.log('COCO-SSD model loaded successfully');
+            } catch (error) {
+                console.error('Failed to load model:', error);
+            }
+        }
+    </script>
 </body>
 </html>
