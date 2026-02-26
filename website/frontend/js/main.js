@@ -110,6 +110,20 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeEventListeners();
     checkServerHealth();
     setupNavigation();
+    // If the page was opened with a hash (e.g. index.html#team) or a ?tab= query,
+    // show that section immediately so external links work from GitHub Pages.
+    try {
+        const hash = (window.location.hash || '').replace(/^#/, '');
+        const params = new URLSearchParams(window.location.search);
+        const tabParam = params.get('tab');
+        const section = hash || tabParam;
+        if (section) {
+            // small timeout to ensure DOM is ready
+            setTimeout(() => showSection(section), 50);
+        }
+    } catch (e) {
+        console.warn('Error handling initial hash/tab param', e);
+    }
 });
 
 // ============ EVENT LISTENERS ============
