@@ -1,5 +1,15 @@
 // ============ CONFIGURATION ============
-const API_BASE_URL = 'http://localhost:5000';
+// API_BASE_URL is the server address for detection API calls. By default we use the
+// current origin so that the frontend will talk to a backend hosted on the same
+// domain (useful during local development or when deploying a full stack).
+//
+// When this page is served as a *static* site (e.g. GitHub Pages) there is no
+// backend at the origin, so health checks will fail and the detection controls
+// will be disabled. In that case you must run the Flask server locally or
+// deploy it somewhere (Heroku, Railway, etc.) and update this value to point
+// at that URL.
+let API_BASE_URL = window.location.origin;
+
 const STATS_UPDATE_INTERVAL = 500; // ms
 let statsInterval = null;
 let isDetectionRunning = false;
@@ -607,11 +617,16 @@ function openEquipmentDetail(label) {
 
 // ============ SERVER HEALTH CHECK ============
 async function checkServerHealth() {
+    // if API_BASE_URL is the same as origin but the origin is a static host
+    // (GitHub Pages, etc.) there will be no `/api/health` endpoint available and
+    // the fetch will fail.  We catch that case and adjust the UI accordingly.
     try {
         const response = await fetch(`${API_BASE_URL}/api/health`);
         
         if (!response.ok) {
-            console.warn('Server health check failed');
+            console.warn('Server health check returned non-OK status');
+            disableDetectionControls();
+            showServerWarning('Backend not reachable – detection is disabled.');
             return false;
         }
 
@@ -626,9 +641,26 @@ async function checkServerHealth() {
 
     } catch (error) {
         console.error('Server health check failed:', error);
-        showAlert('Cannot connect to server. Make sure it\'s running on port 5000.', 'error');
+        disableDetectionControls();
+        showServerWarning('Cannot connect to backend. Run the Flask server locally or
+point API_BASE_URL at a deployed instance.');
         return false;
     }
+}
+
+// small helper functions used by health check
+function showServerWarning(message) {
+    const banner = document.getElementById('server-warning');
+    if (banner) {
+        banner.textContent = message;
+        banner.style.display = 'block';
+    }
+}
+
+function disableDetectionControls() {
+    if (startWebcamBtn) startWebcamBtn.disabled = true;
+    if (stopWebcamBtn) stopWebcamBtn.disabled = true;
+    if (snapshotBtn) snapshotBtn.disabled = true;
 }
 
 // ============ CSS ANIMATIONS ============
