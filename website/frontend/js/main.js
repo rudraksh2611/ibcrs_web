@@ -119,7 +119,26 @@ document.addEventListener('DOMContentLoaded', function() {
         const section = hash || tabParam;
         if (section) {
             // small timeout to ensure DOM is ready
-            setTimeout(() => showSection(section), 50);
+            setTimeout(() => {
+                // Support a special logical section name 'detection' which lives inside the Home tab.
+                if (section === 'detection') {
+                    showSection('home');
+                    // scroll to the detection panel and auto-start webcam if possible
+                    setTimeout(() => {
+                        const wrapper = document.getElementById('video-wrapper');
+                        if (wrapper) wrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        // attempt to start detection (user will still need to allow camera)
+                        if (typeof startWebcam === 'function') {
+                            // do not block page load; try to start after a tiny delay
+                            setTimeout(() => {
+                                try { startWebcam(); } catch (e) { console.warn('Auto-start failed', e); }
+                            }, 300);
+                        }
+                    }, 120);
+                    return;
+                }
+                showSection(section);
+            }, 50);
         }
     } catch (e) {
         console.warn('Error handling initial hash/tab param', e);
