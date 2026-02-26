@@ -253,6 +253,11 @@
     <div id="server-warning" style="display:none; background:#ffcc00; color:#000; padding:0.75rem; text-align:center; font-weight:600;">
         Detection requires a running backend server. See README for details.
     </div>
+    <!-- Visible JS error log for debugging runtime issues on static hosts -->
+    <div id="js-error-log" style="display:none; background:#1f2937; color:#fff; padding:0.75rem; text-align:left; font-family:monospace; font-size:0.9rem; max-height:120px; overflow:auto; border-top:4px solid #ef4444;">
+        <strong>Client error (click for details)</strong>
+        <div id="js-error-details" style="margin-top:0.5rem; white-space:pre-wrap;"></div>
+    </div>
     <!-- NAVBAR -->
     <nav class="navbar">
         <div class="navbar-container">

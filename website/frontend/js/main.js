@@ -85,6 +85,26 @@ function initializeDOMElements() {
     navLinks = document.querySelectorAll('.nav-btn[data-tab], .nav-link');
 }
 
+// global error handlers: surface errors visibly on the static page so you can
+// open the GitHub Pages link and see exactly why detection/model load failed.
+window.addEventListener('error', function (ev) {
+    const details = `${ev.message} at ${ev.filename}:${ev.lineno}:${ev.colno}`;
+    const log = document.getElementById('js-error-log');
+    const detailsEl = document.getElementById('js-error-details');
+    if (detailsEl) detailsEl.textContent = details + '\n' + (ev.error && ev.error.stack ? ev.error.stack : '');
+    if (log) log.style.display = 'block';
+    console.error('Captured global error:', details, ev.error);
+});
+
+window.addEventListener('unhandledrejection', function (ev) {
+    const details = 'Unhandled Rejection: ' + (ev.reason && ev.reason.message ? ev.reason.message : JSON.stringify(ev.reason));
+    const log = document.getElementById('js-error-log');
+    const detailsEl = document.getElementById('js-error-details');
+    if (detailsEl) detailsEl.textContent = details + '\n' + (ev.reason && ev.reason.stack ? ev.reason.stack : '');
+    if (log) log.style.display = 'block';
+    console.error('Captured unhandledrejection:', ev.reason);
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     initializeDOMElements();
     initializeEventListeners();
