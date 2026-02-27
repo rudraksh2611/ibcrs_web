@@ -7,15 +7,21 @@
 // Examples:
 // - Locally on http://localhost:5000/           -> API_BASE_URL = "http://localhost:5000/"
 // - GitHub Pages at https://user.github.io/IBCRS/ -> API_BASE_URL = "https://user.github.io/IBCRS/"
+// - Vercel at https://ibcrs.vercel.app/        -> API_BASE_URL = "https://ibcrs.vercel.app/"
 //
 let API_BASE_URL;
 {
     let path = window.location.pathname || '/';
     // strip filename if present (index.html or similar)
     path = path.replace(/index\.html?$/, '');
-    // ensure trailing slash
-    if (!path.endsWith('/')) path += '/';
-    API_BASE_URL = window.location.origin + path;
+    // For Vercel, use the root path (no subdirectory)
+    if (window.location.hostname.includes('vercel.app')) {
+        API_BASE_URL = window.location.origin + '/';
+    } else {
+        // For GitHub Pages and local, include the path
+        if (!path.endsWith('/')) path += '/';
+        API_BASE_URL = window.location.origin + path;
+    }
 }
 // Note: use relative paths if you ever need to override this manually later.
 
@@ -225,8 +231,16 @@ async function startDetection() {
     try {
         showLoading(true);
         
-        // Start video feed
-        videoFeed.src = `${API_BASE_URL}/video_feed`;
+        // On Vercel or when backend is not available, skip the backend-based detection
+        // and go directly to webcam mode
+        if (!useBackend || window.location.hostname.includes('vercel.app')) {
+            showLoading(false);
+            await startWebcam();
+            return;
+        }
+        
+        // Start video feed (local Flask backend only)
+        videoFeed.src = `${API_BASE_URL}video_feed`;
         
         // Send start command to server
         const response = await fetch(`${API_BASE_URL}api/start`, {
@@ -265,16 +279,19 @@ async function stopDetection() {
     try {
         showLoading(true);
         
-        // Send stop command to server
-        const response = await fetch(`${API_BASE_URL}api/stop`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
+        // Skip backend call on Vercel
+        if (useBackend && !window.location.hostname.includes('vercel.app')) {
+            // Send stop command to server
+            const response = await fetch(`${API_BASE_URL}api/stop`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
 
-        if (!response.ok) {
-            throw new Error('Failed to stop detection');
+            if (!response.ok) {
+                throw new Error('Failed to stop detection');
+            }
         }
 
         // Stop video feed
@@ -338,6 +355,11 @@ function startStatsUpdate() {
 
 async function updateStats() {
     try {
+        // Skip stats on Vercel - stats only work with backend
+        if (window.location.hostname.includes('vercel.app') || !useBackend) {
+            return;
+        }
+
         const response = await fetch(`${API_BASE_URL}api/stats`);
         
         if (!response.ok) {
@@ -681,6 +703,11 @@ async function processFrames() {
 
 async function detectFrame(imageData) {
     try {
+        // Skip backend calls on Vercel
+        if (window.location.hostname.includes('vercel.app') || !useBackend) {
+            return;
+        }
+
         const response = await fetch(`${API_BASE_URL}api/detect`, {
             method: 'POST',
             headers: {
@@ -816,6 +843,16 @@ function openEquipmentDetail(label) {
 
 // ============ SERVER HEALTH CHECK ============
 async function checkServerHealth() {
+    // On Vercel, always use client-side detection
+    if (window.location.hostname.includes('vercel.app')) {
+        console.log('Detected Vercel hosting, using client-side detection');
+        useBackend = false;
+        disableDetectionControls();
+        showServerWarning('Using client-side ML detection (COCO-SSD) on Vercel.');
+        await initLocalModel();
+        return false;
+    }
+
     try {
         const response = await fetch(`${API_BASE_URL}api/health`);
         

@@ -1,0 +1,15 @@
+{
+  "name": "ibcrs-website",
+  "version": "1.0.0",
+  "description": "Intelligent BioTech Component Recognition System - AI-powered biotech equipment detection",
+  "main": "index.js",
+  "scripts": {
+    "dev": "python backend/app.py",
+    "build": "echo 'Build complete'"
+  },
+  "keywords": ["yolo", "detection", "biotech", "ai"],
+  "author": "IBCRS Team",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+}

@@ -1,0 +1,7 @@
+backend/
+*.py
+requirements.txt
+__pycache__/
+*.egg-info/
+.git
+.gitignore
