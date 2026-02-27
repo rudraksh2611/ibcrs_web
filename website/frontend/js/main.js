@@ -1,14 +1,23 @@
 // ============ CONFIGURATION ============
-// API_BASE_URL is the server address for detection API calls. By default we use the
-// current origin so that the frontend will talk to a backend hosted on the same
-// domain (useful during local development or when deploying a full stack).
+// Determine a base URL for API calls that respects the current path. We
+// default to the current origin plus the path portion of the URL. This avoids
+// GitHub Pages (or any repo-hosted site) resolving "/api/..." at the domain
+// root instead of under the repo path.
 //
-// When this page is served as a *static* site (e.g. GitHub Pages) there is no
-// backend at the origin, so health checks will fail and the detection controls
-// will be disabled. In that case you must run the Flask server locally or
-// deploy it somewhere (Heroku, Railway, etc.) and update this value to point
-// at that URL.
-let API_BASE_URL = window.location.origin;
+// Examples:
+// - Locally on http://localhost:5000/           -> API_BASE_URL = "http://localhost:5000/"
+// - GitHub Pages at https://user.github.io/IBCRS/ -> API_BASE_URL = "https://user.github.io/IBCRS/"
+//
+let API_BASE_URL;
+{
+    let path = window.location.pathname || '/';
+    // strip filename if present (index.html or similar)
+    path = path.replace(/index\.html?$/, '');
+    // ensure trailing slash
+    if (!path.endsWith('/')) path += '/';
+    API_BASE_URL = window.location.origin + path;
+}
+// Note: use relative paths if you ever need to override this manually later.
 
 const STATS_UPDATE_INTERVAL = 500; // ms
 let statsInterval = null;
@@ -220,7 +229,7 @@ async function startDetection() {
         videoFeed.src = `${API_BASE_URL}/video_feed`;
         
         // Send start command to server
-        const response = await fetch(`${API_BASE_URL}/api/start`, {
+        const response = await fetch(`${API_BASE_URL}api/start`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -257,7 +266,7 @@ async function stopDetection() {
         showLoading(true);
         
         // Send stop command to server
-        const response = await fetch(`${API_BASE_URL}/api/stop`, {
+        const response = await fetch(`${API_BASE_URL}api/stop`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -329,7 +338,7 @@ function startStatsUpdate() {
 
 async function updateStats() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/stats`);
+        const response = await fetch(`${API_BASE_URL}api/stats`);
         
         if (!response.ok) {
             throw new Error('Failed to fetch stats');
@@ -504,8 +513,10 @@ async function startWebcam() {
         // Update UI
         isDetectionRunning = true;
         if (startWebcamBtn) { startWebcamBtn.disabled = true; startWebcamBtn.style.display = 'none'; }
-        if (stopWebcamBtn) { stopWebcamBtn.disabled = false; stopWebcamBtn.style.display = 'flex'; }
-        
+        if (stopWebcamBtn) { stopWebcamBtn.disabled = false; stopWebcamBtn.style.display = 'flex'; }        // show detection overlay canvas when running
+        if (detectionCanvas) {
+            detectionCanvas.style.display = 'block';
+        }        
         if (detectionStatus) {
             detectionStatus.innerHTML = '<span style="color: #10b981;"><i class="fas fa-circle"></i> Online</span>';
         }
@@ -563,6 +574,10 @@ async function startWebcam() {
 }
 
 function stopWebcam() {
+    // hide detection canvas when stopped
+    if (detectionCanvas) {
+        detectionCanvas.style.display = 'none';
+    }
     // stop camera stream
     if (mediaStream) {
         mediaStream.getTracks().forEach(track => track.stop());
@@ -666,7 +681,7 @@ async function processFrames() {
 
 async function detectFrame(imageData) {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/detect`, {
+        const response = await fetch(`${API_BASE_URL}api/detect`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -696,7 +711,7 @@ async function detectFrame(imageData) {
 async function detectFrameAltEndpoint(imageData) {
     try {
         // Try the endpoint from Flask backend
-        const response = await fetch(`${API_BASE_URL}/api/predict`, {
+        const response = await fetch(`${API_BASE_URL}api/predict`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -802,7 +817,7 @@ function openEquipmentDetail(label) {
 // ============ SERVER HEALTH CHECK ============
 async function checkServerHealth() {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/health`);
+        const response = await fetch(`${API_BASE_URL}api/health`);
         
         if (!response.ok) {
             console.warn('Server health check returned non-OK status');
