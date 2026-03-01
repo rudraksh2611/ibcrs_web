@@ -1,0 +1,7 @@
+website/backend/
+website/*.py
+website/requirements.txt
+__pycache__/
+*.egg-info/
+.git
+.gitignore

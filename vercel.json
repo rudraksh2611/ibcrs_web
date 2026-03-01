@@ -1,0 +1,38 @@
+{
+  "version": 2,
+  "buildCommand": "echo 'Build complete'",
+  "public": true,
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/js/(.*)", "destination": "/website/frontend/js/$1" },
+    { "source": "/css/(.*)", "destination": "/website/frontend/css/$1" },
+    { "source": "/assets/(.*)", "destination": "/website/frontend/assets/$1" },
+    { "source": "/equipment.json", "destination": "/website/frontend/equipment.json" },
+    { "source": "/about.html", "destination": "/website/frontend/about.html" },
+    { "source": "/about", "destination": "/website/frontend/about.html" },
+    { "source": "/component_cam.html", "destination": "/website/frontend/component_cam.html" },
+    { "source": "/component_colorimeter.html", "destination": "/website/frontend/component_colorimeter.html" },
+    { "source": "/component_dronerx.html", "destination": "/website/frontend/component_dronerx.html" },
+    { "source": "/component_magnetic_stirrer.html", "destination": "/website/frontend/component_magnetic_stirrer.html" },
+    { "source": "/component_ph_meter.html", "destination": "/website/frontend/component_ph_meter.html" },
+    { "source": "/component_pir.html", "destination": "/website/frontend/component_pir.html" },
+    { "source": "/component_sonar.html", "destination": "/website/frontend/component_sonar.html" },
+    { "source": "/(.*)", "destination": "/website/frontend/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" }
+      ]
+    },
+    {
+      "source": "/(js|css|assets)/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=3600" }
+      ]
+    }
+  ]
+}
