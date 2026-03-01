@@ -1,23 +1,11 @@
 {
   "version": 2,
   "buildCommand": "echo 'Build complete'",
-  "public": true,
+  "outputDirectory": "frontend",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1.js" },
-    { "source": "/js/(.*)", "destination": "/frontend/js/$1" },
-    { "source": "/css/(.*)", "destination": "/frontend/css/$1" },
-    { "source": "/assets/(.*)", "destination": "/frontend/assets/$1" },
-    { "source": "/equipment.json", "destination": "/frontend/equipment.json" },
-    { "source": "/about.html", "destination": "/frontend/about.html" },
-    { "source": "/about", "destination": "/frontend/about.html" },
-    { "source": "/component_cam.html", "destination": "/frontend/component_cam.html" },
-    { "source": "/component_colorimeter.html", "destination": "/frontend/component_colorimeter.html" },
-    { "source": "/component_dronerx.html", "destination": "/frontend/component_dronerx.html" },
-    { "source": "/component_magnetic_stirrer.html", "destination": "/frontend/component_magnetic_stirrer.html" },
-    { "source": "/component_ph_meter.html", "destination": "/frontend/component_ph_meter.html" },
-    { "source": "/component_pir.html", "destination": "/frontend/component_pir.html" },
-    { "source": "/component_sonar.html", "destination": "/frontend/component_sonar.html" },
-    { "source": "/(.*)", "destination": "/frontend/index.html" }
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/about", "destination": "/about.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
     {
