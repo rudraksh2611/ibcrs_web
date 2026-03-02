@@ -246,9 +246,201 @@
         .footer { background: rgba(15, 20, 25, 0.95); border-top: 1px solid rgba(0, 102, 255, 0.2); padding: 2rem; text-align: center; color: #a0aec0; margin-top: 3rem; }
         .footer a { color: #00d4ff; text-decoration: none; }
         .footer a:hover { text-decoration: underline; }
+
+        /* ============ SPLASH SCREEN ============ */
+        #splash-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            background: #070b11;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
+        }
+        #splash-screen.hide {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .splash-bg {
+            position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse at 50% 50%, rgba(0,102,255,0.12) 0%, transparent 60%),
+                radial-gradient(ellipse at 20% 80%, rgba(0,212,255,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(0,102,255,0.06) 0%, transparent 50%);
+        }
+        .splash-particles {
+            position: absolute; inset: 0; overflow: hidden;
+        }
+        .splash-particles span {
+            position: absolute;
+            width: 2px; height: 2px;
+            background: #00d4ff;
+            border-radius: 50%;
+            opacity: 0;
+            animation: particleFloat 3s ease-in-out infinite;
+        }
+        @keyframes particleFloat {
+            0% { opacity: 0; transform: translateY(0) scale(0); }
+            20% { opacity: 0.7; }
+            100% { opacity: 0; transform: translateY(-120px) scale(1.5); }
+        }
+        .splash-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid rgba(0,102,255,0.15);
+            animation: ringExpand 3s ease-out infinite;
+        }
+        .splash-ring:nth-child(1) { width: 200px; height: 200px; animation-delay: 0s; }
+        .splash-ring:nth-child(2) { width: 300px; height: 300px; animation-delay: 0.6s; }
+        .splash-ring:nth-child(3) { width: 400px; height: 400px; animation-delay: 1.2s; }
+        @keyframes ringExpand {
+            0% { transform: scale(0.5); opacity: 0.6; }
+            100% { transform: scale(1.8); opacity: 0; }
+        }
+        .splash-content {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        .splash-logo-wrapper {
+            position: relative;
+            width: 120px; height: 120px;
+        }
+        .splash-logo-wrapper svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 0 30px rgba(0,102,255,0.5)) drop-shadow(0 0 60px rgba(0,212,255,0.2));
+            animation: splashLogoEntry 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: scale(0.3) rotate(-10deg);
+        }
+        @keyframes splashLogoEntry {
+            to { opacity: 1; transform: scale(1) rotate(0deg); }
+        }
+        .splash-scan-line {
+            position: absolute;
+            left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #00d4ff, transparent);
+            border-radius: 2px;
+            opacity: 0;
+            animation: scanPass 1.5s 0.6s ease-in-out forwards;
+        }
+        @keyframes scanPass {
+            0% { top: 0; opacity: 0.8; }
+            100% { top: 100%; opacity: 0; }
+        }
+        .splash-title {
+            display: flex;
+            gap: 4px;
+            font-size: 3rem;
+            font-weight: 900;
+            letter-spacing: 8px;
+            user-select: none;
+        }
+        .splash-title span {
+            display: inline-block;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: letterReveal 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .splash-title span:nth-child(1) { animation-delay: 0.5s; color: #0066ff; }
+        .splash-title span:nth-child(2) { animation-delay: 0.6s; color: #1a7aff; }
+        .splash-title span:nth-child(3) { animation-delay: 0.7s; color: #339eff; }
+        .splash-title span:nth-child(4) { animation-delay: 0.8s; color: #00b8ff; }
+        .splash-title span:nth-child(5) { animation-delay: 0.9s; color: #00d4ff; }
+        @keyframes letterReveal {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .splash-tagline {
+            color: #6b7a99;
+            font-size: 1rem;
+            font-weight: 500;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            opacity: 0;
+            animation: taglineFade 0.8s 1.3s ease forwards;
+        }
+        @keyframes taglineFade {
+            to { opacity: 1; }
+        }
+        .splash-loader {
+            width: 160px;
+            height: 3px;
+            background: rgba(0,102,255,0.15);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+            opacity: 0;
+            animation: taglineFade 0.5s 1.6s ease forwards;
+        }
+        .splash-loader-bar {
+            width: 0;
+            height: 100%;
+            background: linear-gradient(90deg, #0066ff, #00d4ff);
+            border-radius: 3px;
+            animation: loaderFill 1.8s 1.6s ease-in-out forwards;
+        }
+        @keyframes loaderFill {
+            to { width: 100%; }
+        }
+        @media (max-width: 600px) {
+            .splash-title { font-size: 2rem; letter-spacing: 5px; }
+            .splash-logo-wrapper { width: 90px; height: 90px; }
+            .splash-tagline { font-size: 0.75rem; letter-spacing: 2px; }
+        }
     </style>
 </head>
 <body>
+    <!-- ============ SPLASH SCREEN ============ -->
+    <div id="splash-screen">
+        <div class="splash-bg"></div>
+        <div class="splash-particles" id="splash-particles"></div>
+        <div class="splash-ring"></div>
+        <div class="splash-ring"></div>
+        <div class="splash-ring"></div>
+        <div class="splash-content">
+            <div class="splash-logo-wrapper">
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <radialGradient id="splash-grad" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" style="stop-color:#0066ff;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#00d4ff;stop-opacity:0.3" />
+                        </radialGradient>
+                    </defs>
+                    <rect width="100" height="100" rx="15" fill="#071221"/>
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="url(#splash-grad)" stroke-width="2" opacity="0.6"/>
+                    <circle cx="50" cy="50" r="35" fill="none" stroke="#0066ff" stroke-width="1.5" opacity="0.4"/>
+                    <circle cx="50" cy="50" r="28" fill="none" stroke="#00d4ff" stroke-width="1" opacity="0.3"/>
+                    <circle cx="50" cy="50" r="20" fill="none" stroke="#0066ff" stroke-width="2"/>
+                    <line x1="50" y1="30" x2="50" y2="50" stroke="#0066ff" stroke-width="1.5"/>
+                    <line x1="70" y1="50" x2="50" y2="50" stroke="#0066ff" stroke-width="1.5"/>
+                    <line x1="50" y1="70" x2="50" y2="50" stroke="#0066ff" stroke-width="1.5"/>
+                    <line x1="30" y1="50" x2="50" y2="50" stroke="#0066ff" stroke-width="1.5"/>
+                    <circle cx="35" cy="35" r="2.5" fill="#00d4ff"/>
+                    <circle cx="65" cy="35" r="2.5" fill="#00d4ff"/>
+                    <circle cx="65" cy="65" r="2.5" fill="#00d4ff"/>
+                    <circle cx="35" cy="65" r="2.5" fill="#00d4ff"/>
+                    <path d="M 35 35 L 65 35 L 65 65 L 35 65 Z" fill="none" stroke="#00d4ff" stroke-width="0.8" opacity="0.5"/>
+                    <path d="M 42 50 L 48 56 L 58 46" stroke="#10b981" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <div class="splash-scan-line"></div>
+            </div>
+            <div class="splash-title">
+                <span>I</span><span>B</span><span>C</span><span>R</span><span>S</span>
+            </div>
+            <div class="splash-tagline">Intelligent BioTech Component Recognition</div>
+            <div class="splash-loader"><div class="splash-loader-bar"></div></div>
+        </div>
+    </div>
+
     <!-- WARNING banner displayed when the backend cannot be reached -->
     <div id="server-warning" style="display:none; background:linear-gradient(135deg, #0066ff, #00d4ff); color:#fff; padding:0.75rem; text-align:center; font-weight:600;">
         Loading IBCRS custom detection model...
@@ -558,9 +750,32 @@
         </p>
     </footer>
 
+    <!-- Splash screen logic -->
+    <script>
+    (function() {
+        var pc = document.getElementById('splash-particles');
+        if (pc) {
+            for (var i = 0; i < 30; i++) {
+                var s = document.createElement('span');
+                s.style.left = Math.random() * 100 + '%';
+                s.style.top = 40 + Math.random() * 40 + '%';
+                s.style.animationDelay = Math.random() * 2 + 's';
+                s.style.animationDuration = 2 + Math.random() * 2 + 's';
+                s.style.width = s.style.height = (1 + Math.random() * 2) + 'px';
+                pc.appendChild(s);
+            }
+        }
+        var splash = document.getElementById('splash-screen');
+        if (splash) {
+            setTimeout(function() { splash.classList.add('hide'); }, 3500);
+            setTimeout(function() { splash.remove(); }, 4300);
+        }
+    })();
+    </script>
+
     <!-- ONNX Runtime Web for running the custom YOLOv8 model in the browser -->
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/ort.min.js"></script>
-    <script src="js/main.js?v=2"></script>
+    <script src="js/main.js?v=3"></script>
     <script>
         // Centralized navigation: call showSection which knows aliases like 'detection'
         document.getElementById('logo-home')?.addEventListener('click', function(e) { e.preventDefault(); showSection('home'); });
