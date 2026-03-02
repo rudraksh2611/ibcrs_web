@@ -336,9 +336,20 @@
 
                 <div class="stats-panel">
                     <div class="detected-section">
-                        <h4><i class="fas fa-check-circle"></i> Detected Equipment</h4>
-                        <div id="detection-results" style="display: flex; flex-direction: column; gap: 0.8rem;">
+                        <h4><i class="fas fa-broadcast-tower"></i> Live Detections</h4>
+                        <div id="detection-results" style="display: flex; flex-direction: column; gap: 0.6rem;">
                             <p style="color: #a0aec0; font-size: 0.9rem;">No detections yet. Start detection to begin.</p>
+                        </div>
+                    </div>
+                    <div class="detected-section" style="margin-top: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+                            <h4 style="margin: 0;"><i class="fas fa-history"></i> Detection History</h4>
+                            <button onclick="clearHistory()" class="btn" style="padding: 0.35rem 0.8rem; font-size: 0.8rem; background: rgba(239, 68, 68, 0.3); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.5)'" onmouseout="this.style.background='rgba(239,68,68,0.3)'">
+                                <i class="fas fa-trash-alt"></i> Clear
+                            </button>
+                        </div>
+                        <div id="detection-history" style="max-height: 300px; overflow-y: auto;">
+                            <p style="color: #a0aec0; font-size: 0.9rem;">No components detected yet.</p>
                         </div>
                     </div>
                 </div>

@@ -762,30 +762,27 @@ async function detectFrameAltEndpoint(imageData) {
 function displayDetections(detections) {
     detectionCount = detections.length;
     if (detectionCountDisplay) detectionCountDisplay.textContent = detectionCount;
+
+    if (detections.length > 0) {
+        addToHistory(detections);
+    }
     
     if (detectionResults) {
         if (detections.length === 0) {
-            detectionResults.innerHTML = '<p style="color: #a0aec0; text-align: center; margin: 2rem 0;">No detections</p>';
+            detectionResults.innerHTML = '<p style="color: #a0aec0; text-align: center; margin: 1rem 0;">Scanning...</p>';
             return;
         }
 
-        let html = '<div style="display: flex; flex-direction: column; gap: 0.8rem;">';
-        
+        let html = '<div style="display: flex; flex-direction: column; gap: 0.6rem;">';
         detections.forEach(det => {
             const confidence = (det.confidence * 100).toFixed(1);
             const label = det.class || det.label || 'Unknown';
-            
             html += `
-                <div style="background: rgba(0, 102, 255, 0.2); padding: 0.8rem; border-radius: 6px; border-left: 3px solid #0066ff; cursor: pointer; transition: all 0.3s ease;" 
-                     onmouseover="this.style.background='rgba(0, 102, 255, 0.4)';" 
-                     onmouseout="this.style.background='rgba(0, 102, 255, 0.2)';"
-                     onclick="openEquipmentDetail('${label}')">
-                    <div style="font-weight: 600; color: #00d4ff; font-size: 1rem; margin-bottom: 0.3rem;"><i class="fas fa-check-circle"></i> ${label}</div>
-                    <div style="color: #a0aec0; font-size: 0.9rem;">Confidence: <strong style="color: #10b981;">${confidence}%</strong></div>
-                </div>
-            `;
+                <div style="background: rgba(16, 185, 129, 0.2); padding: 0.6rem; border-radius: 6px; border-left: 3px solid #10b981;">
+                    <div style="font-weight: 600; color: #10b981; font-size: 0.95rem;"><i class="fas fa-check-circle"></i> ${label}</div>
+                    <div style="color: #a0aec0; font-size: 0.85rem;">Confidence: <strong style="color: #10b981;">${confidence}%</strong></div>
+                </div>`;
         });
-        
         html += '</div>';
         detectionResults.innerHTML = html;
     }
@@ -904,8 +901,11 @@ function disableDetectionControls() {
 // Class names matching the custom YOLOv8 training order
 const YOLO_CLASS_NAMES = ['Cam', 'DroneRx', 'PIR', 'Sonar', 'Colorimeter', 'Magnetic Stirrer', 'pH meter'];
 const YOLO_INPUT_SIZE = 640;
-const YOLO_CONF_THRESHOLD = 0.3;
+const YOLO_CONF_THRESHOLD = 0.25;
 const YOLO_IOU_THRESHOLD = 0.45;
+
+// Detection history: persists across frames until user clears
+let detectionHistory = [];
 
 async function initLocalModel() {
     if (localModel) return;
@@ -931,21 +931,29 @@ async function initLocalModel() {
     }
 }
 
+// Letterbox pre-processing: maintain aspect ratio with gray padding for better accuracy
 function preprocessFrame(canvas) {
+    const srcW = canvas.width, srcH = canvas.height;
+    const scale = Math.min(YOLO_INPUT_SIZE / srcW, YOLO_INPUT_SIZE / srcH);
+    const newW = Math.round(srcW * scale), newH = Math.round(srcH * scale);
+    const padX = (YOLO_INPUT_SIZE - newW) / 2, padY = (YOLO_INPUT_SIZE - newH) / 2;
+
     const tmpCanvas = document.createElement('canvas');
     tmpCanvas.width = YOLO_INPUT_SIZE;
     tmpCanvas.height = YOLO_INPUT_SIZE;
     const tmpCtx = tmpCanvas.getContext('2d');
-    tmpCtx.drawImage(canvas, 0, 0, YOLO_INPUT_SIZE, YOLO_INPUT_SIZE);
+    tmpCtx.fillStyle = '#808080';
+    tmpCtx.fillRect(0, 0, YOLO_INPUT_SIZE, YOLO_INPUT_SIZE);
+    tmpCtx.drawImage(canvas, padX, padY, newW, newH);
+
     const imageData = tmpCtx.getImageData(0, 0, YOLO_INPUT_SIZE, YOLO_INPUT_SIZE);
     const pixels = imageData.data;
-
     const float32Data = new Float32Array(3 * YOLO_INPUT_SIZE * YOLO_INPUT_SIZE);
     const channelSize = YOLO_INPUT_SIZE * YOLO_INPUT_SIZE;
     for (let i = 0; i < channelSize; i++) {
-        float32Data[i] = pixels[i * 4] / 255.0;                     // R
-        float32Data[channelSize + i] = pixels[i * 4 + 1] / 255.0;   // G
-        float32Data[2 * channelSize + i] = pixels[i * 4 + 2] / 255.0; // B
+        float32Data[i] = pixels[i * 4] / 255.0;
+        float32Data[channelSize + i] = pixels[i * 4 + 1] / 255.0;
+        float32Data[2 * channelSize + i] = pixels[i * 4 + 2] / 255.0;
     }
     return new ort.Tensor('float32', float32Data, [1, 3, YOLO_INPUT_SIZE, YOLO_INPUT_SIZE]);
 }
@@ -960,9 +968,7 @@ function iou(a, b) {
 }
 
 function postprocessYOLO(outputData, numClasses) {
-    // YOLOv8 output: [1, 4+numClasses, 8400] transposed to [8400, 4+numClasses]
     const numDetections = 8400;
-    const stride = 4 + numClasses;
     const candidates = [];
 
     for (let i = 0; i < numDetections; i++) {
@@ -986,7 +992,6 @@ function postprocessYOLO(outputData, numClasses) {
 
     candidates.sort((a, b) => b.confidence - a.confidence);
 
-    // NMS
     const kept = [];
     const suppressed = new Set();
     for (let i = 0; i < candidates.length; i++) {
@@ -999,6 +1004,65 @@ function postprocessYOLO(outputData, numClasses) {
         }
     }
     return kept;
+}
+
+// ============ DETECTION HISTORY ============
+function addToHistory(detections) {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString();
+    detections.forEach(det => {
+        const label = det.class || det.label || 'Unknown';
+        const existing = detectionHistory.find(h => h.label === label);
+        if (existing) {
+            existing.confidence = Math.max(existing.confidence, det.confidence);
+            existing.lastSeen = timeStr;
+            existing.count++;
+        } else {
+            detectionHistory.push({
+                label: label,
+                confidence: det.confidence,
+                firstSeen: timeStr,
+                lastSeen: timeStr,
+                count: 1
+            });
+        }
+    });
+    renderHistory();
+}
+
+function clearHistory() {
+    detectionHistory = [];
+    renderHistory();
+    showAlert('Detection history cleared', 'info');
+}
+
+function renderHistory() {
+    const container = document.getElementById('detection-history');
+    if (!container) return;
+
+    if (detectionHistory.length === 0) {
+        container.innerHTML = '<p style="color: #a0aec0; font-size: 0.9rem;">No components detected yet.</p>';
+        return;
+    }
+
+    let html = '';
+    detectionHistory.forEach(item => {
+        const conf = (item.confidence * 100).toFixed(1);
+        html += `
+            <div style="background: rgba(0, 102, 255, 0.15); padding: 0.7rem; border-radius: 8px; border-left: 3px solid #10b981; cursor: pointer; transition: all 0.3s ease; margin-bottom: 0.5rem;"
+                 onmouseover="this.style.background='rgba(0, 102, 255, 0.3)';"
+                 onmouseout="this.style.background='rgba(0, 102, 255, 0.15)';"
+                 onclick="openEquipmentDetail('${item.label}')">
+                <div style="font-weight: 600; color: #00d4ff; font-size: 0.95rem; margin-bottom: 0.2rem;">
+                    <i class="fas fa-microchip"></i> ${item.label}
+                </div>
+                <div style="color: #a0aec0; font-size: 0.8rem;">
+                    Best: <strong style="color: #10b981;">${conf}%</strong> &middot;
+                    Seen ${item.count}x &middot; ${item.lastSeen}
+                </div>
+            </div>`;
+    });
+    container.innerHTML = html;
 }
 
 // ============ CSS ANIMATIONS ============
