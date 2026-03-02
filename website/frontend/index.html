@@ -250,8 +250,8 @@
 </head>
 <body>
     <!-- WARNING banner displayed when the backend cannot be reached -->
-    <div id="server-warning" style="display:none; background:#ffcc00; color:#000; padding:0.75rem; text-align:center; font-weight:600;">
-        Detection requires a running backend server. See README for details.
+    <div id="server-warning" style="display:none; background:linear-gradient(135deg, #0066ff, #00d4ff); color:#fff; padding:0.75rem; text-align:center; font-weight:600;">
+        Loading IBCRS custom detection model...
     </div>
     <!-- Visible JS error log for debugging runtime issues on static hosts -->
     <div id="js-error-log" style="display:none; background:#1f2937; color:#fff; padding:0.75rem; text-align:left; font-family:monospace; font-size:0.9rem; max-height:120px; overflow:auto; border-top:4px solid #ef4444;">
@@ -546,9 +546,8 @@
         </p>
     </footer>
 
-    <!-- Load TensorFlow.js and COCO-SSD for reliable client-side detection fallback on static hosts -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+    <!-- ONNX Runtime Web for running the custom YOLOv8 model in the browser -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/ort.min.js"></script>
     <script src="js/main.js"></script>
     <script>
         // Centralized navigation: call showSection which knows aliases like 'detection'

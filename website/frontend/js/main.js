@@ -498,7 +498,7 @@ async function startWebcam() {
         if (useBackend === false) {
             try {
                 await initLocalModel();
-                showServerWarning('Using client-side model for detection');
+                showServerWarning('Using IBCRS custom model for detection');
             } catch (e) {
                 // initLocalModel already showed warning/disabled controls
                 return;
@@ -660,19 +660,21 @@ async function processFrames() {
         ctx.drawImage(webcamFeed, 0, 0);
         
         if (useBackend === false) {
-            // client-side inference
-            if (localModel) {
-                if (localModel.type === 'coco' && localModel.model && typeof localModel.model.detect === 'function') {
-                    const results = await localModel.model.detect(detectionCanvas);
-                    const dets = convertLocalResults(results);
-                    displayDetections(dets);
-                } else if (localModel.type === 'ultralytics' && localModel.model) {
-                    if (typeof localModel.model.predict === 'function') {
-                        const results = await localModel.model.predict(detectionCanvas, {conf:0.3});
-                        const dets = convertLocalResults(results);
-                        displayDetections(dets);
-                    }
-                }
+            if (localModel && localModel.type === 'onnx') {
+                const inputTensor = preprocessFrame(detectionCanvas);
+                const feeds = {};
+                const inputName = localModel.session.inputNames[0];
+                feeds[inputName] = inputTensor;
+                const results = await localModel.session.run(feeds);
+                const outputName = localModel.session.outputNames[0];
+                const output = results[outputName];
+                const kept = postprocessYOLO(output.data, localModel.classNames.length);
+                const dets = kept.map(d => ({
+                    class: localModel.classNames[d.classIdx],
+                    label: localModel.classNames[d.classIdx],
+                    confidence: d.confidence
+                }));
+                displayDetections(dets);
             }
         } else {
             // Convert to base64 JPEG
@@ -845,10 +847,10 @@ function openEquipmentDetail(label) {
 async function checkServerHealth() {
     // On Vercel, always use client-side detection
     if (window.location.hostname.includes('vercel.app')) {
-        console.log('Detected Vercel hosting, using client-side detection');
+        console.log('Detected Vercel hosting, using client-side ONNX detection');
         useBackend = false;
         disableDetectionControls();
-        showServerWarning('Using client-side ML detection (COCO-SSD) on Vercel.');
+        showServerWarning('Loading IBCRS custom detection model...');
         await initLocalModel();
         return false;
     }
@@ -860,7 +862,7 @@ async function checkServerHealth() {
             console.warn('Server health check returned non-OK status');
             useBackend = false;
             disableDetectionControls();
-            showServerWarning('Backend not reachable – falling back to client-side detection.');
+            showServerWarning('Backend not reachable – using IBCRS custom model for detection.');
             await initLocalModel();
             return false;
         }
@@ -879,7 +881,7 @@ async function checkServerHealth() {
         console.error('Server health check failed:', error);
         useBackend = false;
         disableDetectionControls();
-        showServerWarning('Cannot connect to backend – trying client-side detection.');
+            showServerWarning('Cannot connect to backend – using IBCRS custom model for detection.');
         await initLocalModel();
         return false;
     }
@@ -899,48 +901,104 @@ function disableDetectionControls() {
     if (stopWebcamBtn) stopWebcamBtn.disabled = true;
     if (snapshotBtn) snapshotBtn.disabled = true;
 }
-// Initialize a client-side model. Try Ultralytics Web first, then fall back to COCO-SSD.
+// Class names matching the custom YOLOv8 training order
+const YOLO_CLASS_NAMES = ['Cam', 'DroneRx', 'PIR', 'Sonar', 'Colorimeter', 'Magnetic Stirrer', 'pH meter'];
+const YOLO_INPUT_SIZE = 640;
+const YOLO_CONF_THRESHOLD = 0.3;
+const YOLO_IOU_THRESHOLD = 0.45;
+
 async function initLocalModel() {
     if (localModel) return;
 
-    // Try Ultralytics Web (if available)
     try {
-        const mod = await import('https://cdn.jsdelivr.net/npm/@ultralytics/web@latest/dist/ultralytics.min.js');
-        const YOLO = mod && (mod.YOLO || mod.default?.YOLO || mod);
-        if (YOLO && typeof YOLO.load === 'function') {
-            try {
-                const model = await YOLO.load('https://ultralytics.com/assets/models/yolov8n.pt');
-                localModel = { type: 'ultralytics', model };
-                console.log('Loaded Ultralytics web model for client-side detection.');
-                if (startWebcamBtn) startWebcamBtn.disabled = false;
-                return;
-            } catch (e) {
-                console.warn('Ultralytics model load failed, falling back to COCO-SSD:', e);
-            }
-        }
-    } catch (err) {
-        console.warn('Ultralytics web not available:', err);
-    }
+        if (typeof ort === 'undefined') throw new Error('ONNX Runtime Web not loaded');
 
-    // Fall back to coco-ssd (loaded via script tag)
-    try {
-        if (window.cocoSsd && typeof window.cocoSsd.load === 'function') {
-            const model = await cocoSsd.load();
-            localModel = { type: 'coco', model };
-            console.log('Loaded COCO-SSD model for client-side detection.');
-            if (startWebcamBtn) startWebcamBtn.disabled = false;
-            return;
-        } else {
-            throw new Error('cocoSsd not available');
-        }
+        showServerWarning('Loading IBCRS detection model... please wait.');
+        const session = await ort.InferenceSession.create('models/best.onnx', {
+            executionProviders: ['wasm'],
+            graphOptimizationLevel: 'all'
+        });
+        localModel = { type: 'onnx', session, classNames: YOLO_CLASS_NAMES };
+        console.log('Loaded custom IBCRS ONNX model for client-side detection.');
+        showServerWarning('IBCRS custom model loaded. Ready for detection.');
+        if (startWebcamBtn) startWebcamBtn.disabled = false;
     } catch (err) {
-        console.error('Failed to load client-side models', err);
-        showServerWarning('Client-side model load failed; detection unavailable.');
-        // Keep start enabled so users can still view webcam, but disable detection controls
+        console.error('Failed to load ONNX model', err);
+        showServerWarning('Model load failed; detection unavailable. ' + err.message);
         if (stopWebcamBtn) stopWebcamBtn.disabled = true;
         if (snapshotBtn) snapshotBtn.disabled = true;
         throw err;
     }
+}
+
+function preprocessFrame(canvas) {
+    const tmpCanvas = document.createElement('canvas');
+    tmpCanvas.width = YOLO_INPUT_SIZE;
+    tmpCanvas.height = YOLO_INPUT_SIZE;
+    const tmpCtx = tmpCanvas.getContext('2d');
+    tmpCtx.drawImage(canvas, 0, 0, YOLO_INPUT_SIZE, YOLO_INPUT_SIZE);
+    const imageData = tmpCtx.getImageData(0, 0, YOLO_INPUT_SIZE, YOLO_INPUT_SIZE);
+    const pixels = imageData.data;
+
+    const float32Data = new Float32Array(3 * YOLO_INPUT_SIZE * YOLO_INPUT_SIZE);
+    const channelSize = YOLO_INPUT_SIZE * YOLO_INPUT_SIZE;
+    for (let i = 0; i < channelSize; i++) {
+        float32Data[i] = pixels[i * 4] / 255.0;                     // R
+        float32Data[channelSize + i] = pixels[i * 4 + 1] / 255.0;   // G
+        float32Data[2 * channelSize + i] = pixels[i * 4 + 2] / 255.0; // B
+    }
+    return new ort.Tensor('float32', float32Data, [1, 3, YOLO_INPUT_SIZE, YOLO_INPUT_SIZE]);
+}
+
+function iou(a, b) {
+    const x1 = Math.max(a[0], b[0]), y1 = Math.max(a[1], b[1]);
+    const x2 = Math.min(a[2], b[2]), y2 = Math.min(a[3], b[3]);
+    const inter = Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+    const areaA = (a[2] - a[0]) * (a[3] - a[1]);
+    const areaB = (b[2] - b[0]) * (b[3] - b[1]);
+    return inter / (areaA + areaB - inter);
+}
+
+function postprocessYOLO(outputData, numClasses) {
+    // YOLOv8 output: [1, 4+numClasses, 8400] transposed to [8400, 4+numClasses]
+    const numDetections = 8400;
+    const stride = 4 + numClasses;
+    const candidates = [];
+
+    for (let i = 0; i < numDetections; i++) {
+        let maxScore = 0, maxIdx = 0;
+        for (let c = 0; c < numClasses; c++) {
+            const score = outputData[(4 + c) * numDetections + i];
+            if (score > maxScore) { maxScore = score; maxIdx = c; }
+        }
+        if (maxScore < YOLO_CONF_THRESHOLD) continue;
+
+        const cx = outputData[0 * numDetections + i];
+        const cy = outputData[1 * numDetections + i];
+        const w  = outputData[2 * numDetections + i];
+        const h  = outputData[3 * numDetections + i];
+        candidates.push({
+            box: [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2],
+            confidence: maxScore,
+            classIdx: maxIdx
+        });
+    }
+
+    candidates.sort((a, b) => b.confidence - a.confidence);
+
+    // NMS
+    const kept = [];
+    const suppressed = new Set();
+    for (let i = 0; i < candidates.length; i++) {
+        if (suppressed.has(i)) continue;
+        kept.push(candidates[i]);
+        for (let j = i + 1; j < candidates.length; j++) {
+            if (!suppressed.has(j) && iou(candidates[i].box, candidates[j].box) > YOLO_IOU_THRESHOLD) {
+                suppressed.add(j);
+            }
+        }
+    }
+    return kept;
 }
 
 // ============ CSS ANIMATIONS ============

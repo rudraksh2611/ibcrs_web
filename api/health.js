@@ -20,7 +20,7 @@ export default function handler(req, res) {
   return res.status(503).json({
     status: 'no-backend',
     model_loaded: false,
-    message: 'Backend detection unavailable on Vercel. Using client-side detection (COCO-SSD).',
+    message: 'Backend unavailable on Vercel. Using client-side IBCRS custom ONNX model.',
     timestamp: new Date().toISOString()
   });
 }
