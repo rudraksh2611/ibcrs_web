@@ -1023,6 +1023,7 @@ function postprocessYOLO(outputData, numClasses) {
 function addToHistory(detections) {
     const now = new Date();
     const timeStr = now.toLocaleTimeString();
+    let newItemAdded = false;
     detections.forEach(det => {
         const label = det.class || det.label || 'Unknown';
         const existing = detectionHistory.find(h => h.label === label);
@@ -1038,9 +1039,15 @@ function addToHistory(detections) {
                 lastSeen: timeStr,
                 count: 1
             });
+            newItemAdded = true;
         }
     });
     renderHistory();
+    if (newItemAdded) {
+        showAlert('Component saved to history!', 'success');
+        const container = document.getElementById('detection-history');
+        if (container) container.scrollTop = container.scrollHeight;
+    }
 }
 
 function clearHistory() {
@@ -1062,16 +1069,23 @@ function renderHistory() {
     detectionHistory.forEach(item => {
         const conf = (item.confidence * 100).toFixed(1);
         html += `
-            <div style="background: rgba(0, 102, 255, 0.15); padding: 0.7rem; border-radius: 8px; border-left: 3px solid #10b981; cursor: pointer; transition: all 0.3s ease; margin-bottom: 0.5rem;"
-                 onmouseover="this.style.background='rgba(0, 102, 255, 0.3)';"
-                 onmouseout="this.style.background='rgba(0, 102, 255, 0.15)';"
+            <div style="background: rgba(0, 102, 255, 0.15); padding: 0.8rem; border-radius: 8px; border-left: 4px solid #10b981; cursor: pointer; transition: all 0.3s ease; margin-bottom: 0.6rem;"
+                 onmouseover="this.style.background='rgba(0, 102, 255, 0.3)'; this.style.transform='translateX(4px)';"
+                 onmouseout="this.style.background='rgba(0, 102, 255, 0.15)'; this.style.transform='none';"
                  onclick="openEquipmentDetail('${item.label}')">
-                <div style="font-weight: 600; color: #00d4ff; font-size: 0.95rem; margin-bottom: 0.2rem;">
-                    <i class="fas fa-microchip"></i> ${item.label}
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                    <span style="font-weight: 700; color: #00d4ff; font-size: 1rem;">
+                        <i class="fas fa-microchip"></i> ${item.label}
+                    </span>
+                    <span style="background: rgba(16,185,129,0.2); color: #10b981; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.75rem; font-weight: 600;">
+                        ${conf}%
+                    </span>
                 </div>
-                <div style="color: #a0aec0; font-size: 0.8rem;">
-                    Best: <strong style="color: #10b981;">${conf}%</strong> &middot;
-                    Seen ${item.count}x &middot; ${item.lastSeen}
+                <div style="color: #6b7a99; font-size: 0.78rem;">
+                    <i class="fas fa-clock"></i> ${item.lastSeen} &middot; Detected ${item.count}x
+                </div>
+                <div style="color: #0066ff; font-size: 0.75rem; margin-top: 0.2rem;">
+                    <i class="fas fa-external-link-alt"></i> Click to view details
                 </div>
             </div>`;
     });
