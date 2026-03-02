@@ -759,27 +759,40 @@ async function detectFrameAltEndpoint(imageData) {
     }
 }
 
+let lastDetectionTime = 0;
+let lastDetections = [];
+const DETECTION_HOLD_MS = 3000;
+
 function displayDetections(detections) {
     detectionCount = detections.length;
     if (detectionCountDisplay) detectionCountDisplay.textContent = detectionCount;
 
     if (detections.length > 0) {
         addToHistory(detections);
+        lastDetections = detections;
+        lastDetectionTime = Date.now();
     }
+
+    const timeSinceLast = Date.now() - lastDetectionTime;
+    const showDets = detections.length > 0 ? detections : (timeSinceLast < DETECTION_HOLD_MS ? lastDetections : []);
     
     if (detectionResults) {
-        if (detections.length === 0) {
-            detectionResults.innerHTML = '<p style="color: #a0aec0; text-align: center; margin: 1rem 0;">Scanning...</p>';
+        if (showDets.length === 0) {
+            detectionResults.innerHTML = '<p style="color: #a0aec0; text-align: center; margin: 1rem 0;"><i class="fas fa-search"></i> Scanning for components...</p>';
             return;
         }
 
-        let html = '<div style="display: flex; flex-direction: column; gap: 0.6rem;">';
-        detections.forEach(det => {
+        const isFading = detections.length === 0;
+        let html = '<div style="display: flex; flex-direction: column; gap: 0.6rem;' + (isFading ? ' opacity: 0.6;' : '') + '">';
+        showDets.forEach(det => {
             const confidence = (det.confidence * 100).toFixed(1);
             const label = det.class || det.label || 'Unknown';
             html += `
                 <div style="background: rgba(16, 185, 129, 0.2); padding: 0.6rem; border-radius: 6px; border-left: 3px solid #10b981;">
-                    <div style="font-weight: 600; color: #10b981; font-size: 0.95rem;"><i class="fas fa-check-circle"></i> ${label}</div>
+                    <div style="font-weight: 600; color: #10b981; font-size: 0.95rem;">
+                        <i class="fas fa-check-circle"></i> ${label}
+                        <span style="float: right; font-size: 0.75rem; color: #a0aec0;">${isFading ? 'saved' : 'live'}</span>
+                    </div>
                     <div style="color: #a0aec0; font-size: 0.85rem;">Confidence: <strong style="color: #10b981;">${confidence}%</strong></div>
                 </div>`;
         });
