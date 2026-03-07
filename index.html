@@ -348,64 +348,57 @@
         // Detect objects in uploaded image
         async function detectUploadedImage() {
             try {
-                const img = document.getElementById('preview-img');
+                const previewImg = document.getElementById('preview-img');
                 const resultsDiv = document.getElementById('gallery-detection-results');
 
-                if (!img.src) {
+                if (!previewImg || !previewImg.src) {
                     resultsDiv.innerHTML = '<p style="color: #dc2626;">No image loaded</p>';
                     return;
                 }
-
-                resultsDiv.innerHTML = '<p style="color: #a0aec0;"><i class="fas fa-spinner fa-spin"></i> Analyzing image...</p>';
 
                 if (!localModel) {
                     resultsDiv.innerHTML = '<p style="color: #dc2626;">Model not loaded yet. Please wait...</p>';
                     return;
                 }
 
-                // Create a canvas and load the image
-                return new Promise((resolve, reject) => {
-                    const canvas = document.createElement('canvas');
-                    const imgElement = new Image();
-                    imgElement.crossOrigin = "anonymous";
-                    
-                    imgElement.onload = async () => {
-                        try {
-                            canvas.width = imgElement.width;
-                            canvas.height = imgElement.height;
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(imgElement, 0, 0);
+                resultsDiv.innerHTML = '<p style="color: #a0aec0;"><i class="fas fa-spinner fa-spin"></i> Analyzing image...</p>';
 
-                            const predictions = await localModel.detect(canvas);
-                            
-                            if (predictions.length === 0) {
-                                resultsDiv.innerHTML = '<p style="color: #a0aec0;">No equipment detected in the image</p>';
-                            } else {
-                                let html = '<div style="max-height: 400px; overflow-y: auto;">';
-                                predictions.forEach((p, idx) => {
-                                    html += `<div style="background: rgba(0,102,255,0.2); padding: 0.7rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 3px solid #0066ff;">
-                                        <strong style="color: #00d4ff;">${idx + 1}. ${p.class}</strong> - <span style="color: #10b981;">${(p.score * 100).toFixed(1)}%</span>
-                                    </div>`;
-                                });
-                                html += '</div>';
-                                resultsDiv.innerHTML = html;
-                            }
-                            resolve();
-                        } catch (err) {
-                            console.error('Detection error:', err);
-                            resultsDiv.innerHTML = '<p style="color: #dc2626;">Detection failed: ' + err.message + '</p>';
-                            reject(err);
-                        }
-                    };
-
-                    imgElement.onerror = () => {
-                        resultsDiv.innerHTML = '<p style="color: #dc2626;">Failed to load image for detection</p>';
-                        reject(new Error('Failed to load image'));
-                    };
-
-                    // Set the source to trigger loading
-                    imgElement.src = img.src;
-                });
+                // Create a hidden canvas to draw the image
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Use the preview image directly - it's guaranteed to be loaded
+                canvas.width = previewImg.naturalWidth || previewImg.width;
+                canvas.height = previewImg.naturalHeight || previewImg.height;
+                
+                if (canvas.width <= 0 || canvas.height <= 0) {
+                    // Fallback to current dimensions if natural dimensions not available
+                    canvas.width = previewImg.width || 640;
+                    canvas.height = previewImg.height || 480;
+                }
+                
+                // Draw the image to canvas
+                ctx.drawImage(previewImg, 0, 0);
+                
+                console.log('Canvas ready for detection. Size:', canvas.width, 'x', canvas.height);
+                
+                // Run detection
+                const predictions = await localModel.detect(canvas);
+                
+                console.log('Predictions:', predictions);
+                
+                if (predictions.length === 0) {
+                    resultsDiv.innerHTML = '<p style="color: #a0aec0;">No equipment detected in the image</p>';
+                } else {
+                    let html = '<div style="max-height: 400px; overflow-y: auto;">';
+                    predictions.forEach((p, idx) => {
+                        html += `<div style="background: rgba(0,102,255,0.2); padding: 0.7rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 3px solid #0066ff;">
+                            <strong style="color: #00d4ff;">${idx + 1}. ${p.class}</strong> - <span style="color: #10b981;">${(p.score * 100).toFixed(1)}%</span>
+                        </div>`;
+                    });
+                    html += '</div>';
+                    resultsDiv.innerHTML = html;
+                }
             } catch (err) {
                 console.error('Upload detection error:', err);
                 document.getElementById('gallery-detection-results').innerHTML = '<p style="color: #dc2626;"><strong>Error:</strong> ' + err.message + '</p>';
