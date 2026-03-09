@@ -1,8 +1,8 @@
 /**
  * Health check endpoint for IBCRS on Vercel
- * Returns status indicating that client-side detection is being used
+ * Checks if a YOLOv8 backend is configured
  */
-export default function handler(req, res) {
+export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -18,12 +18,34 @@ export default function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Return error to indicate backend is not available
-  // This will trigger client-side model loading (COCO-SSD)
-  return res.status(503).json({
-    status: 'no-backend',
+  // Check if backend is configured
+  const BACKEND_URL = process.env.YOLO_BACKEND_URL || process.env.BACKEND_URL;
+  
+  if (BACKEND_URL) {
+    // Try to verify the backend is actually reachable
+    try {
+      const backendHealth = await fetch(`${BACKEND_URL}/api/health`, { 
+        timeout: 5000 
+      });
+      if (backendHealth.ok) {
+        return res.status(200).json({
+          status: 'ok',
+          model_loaded: true,
+          message: 'Connected to YOLOv8 backend',
+          backend_url: BACKEND_URL,
+          timestamp: new Date().toISOString()
+        });
+      }
+    } catch (e) {
+      console.log('Backend unreachable:', e.message);
+    }
+  }
+
+  // If no backend or unreachable, fall back to client-side detection
+  return res.status(200).json({
+    status: 'degraded',
     model_loaded: false,
-    message: 'Backend detection unavailable on Vercel. Using client-side detection (COCO-SSD).',
+    message: 'Backend not available. Using client-side COCO-SSD detection. To use custom YOLOv8: set YOLO_BACKEND_URL environment variable on Vercel.',
     timestamp: new Date().toISOString()
   });
 }
