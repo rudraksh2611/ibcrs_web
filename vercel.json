@@ -17,6 +17,7 @@
     { "source": "/component_ph_meter.html", "destination": "/website/frontend/component_ph_meter.html" },
     { "source": "/component_pir.html", "destination": "/website/frontend/component_pir.html" },
     { "source": "/component_sonar.html", "destination": "/website/frontend/component_sonar.html" },
+    { "source": "/models/(.*)", "destination": "/website/frontend/models/$1" },
     { "source": "/(.*)", "destination": "/website/frontend/index.html" }
   ],
   "headers": [
