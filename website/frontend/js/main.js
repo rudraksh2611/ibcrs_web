@@ -1035,8 +1035,12 @@ async function initLocalModel() {
         if (typeof ort === 'undefined') throw new Error('ONNX Runtime Web not loaded');
 
         showServerWarning('Loading IBCRS detection model... please wait.');
-        const session = await ort.InferenceSession.create('models/best.onnx', {
-            executionProviders: ['wasm'],
+        // Use absolute URL so it works on Vercel (relative path can fail with SPA routing)
+        const modelUrl = (typeof window !== 'undefined' && window.location)
+            ? window.location.origin + '/models/best.onnx'
+            : '/models/best.onnx';
+        const session = await ort.InferenceSession.create(modelUrl, {
+            executionProviders: ['wasm', 'webgl'],
             graphOptimizationLevel: 'all'
         });
         localModel = { type: 'onnx', session, classNames: YOLO_CLASS_NAMES };
@@ -1093,19 +1097,22 @@ function iou(a, b) {
 function postprocessYOLO(outputData, numClasses) {
     const numDetections = 8400;
     const candidates = [];
+    const data = outputData && typeof outputData.length === 'number' ? outputData : Array.from(outputData || []);
 
     for (let i = 0; i < numDetections; i++) {
         let maxScore = 0, maxIdx = 0;
         for (let c = 0; c < numClasses; c++) {
-            const score = outputData[(4 + c) * numDetections + i];
+            let score = data[(4 + c) * numDetections + i];
+            if (typeof score !== 'number' || isNaN(score)) score = 0;
+            if (score < 0 || score > 1) score = 1 / (1 + Math.exp(-score));
             if (score > maxScore) { maxScore = score; maxIdx = c; }
         }
         if (maxScore < YOLO_CONF_THRESHOLD) continue;
 
-        const cx = outputData[0 * numDetections + i];
-        const cy = outputData[1 * numDetections + i];
-        const w  = outputData[2 * numDetections + i];
-        const h  = outputData[3 * numDetections + i];
+        const cx = data[0 * numDetections + i];
+        const cy = data[1 * numDetections + i];
+        const w  = data[2 * numDetections + i];
+        const h  = data[3 * numDetections + i];
         candidates.push({
             box: [cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2],
             confidence: maxScore,

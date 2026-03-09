@@ -30,9 +30,10 @@
       ]
     },
     {
-      "source": "/(js|css|assets)/(.*)",
+      "source": "/(js|css|assets|models)/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=3600" }
+        { "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=3600" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
       ]
     }
   ]
