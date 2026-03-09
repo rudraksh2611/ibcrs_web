@@ -241,9 +241,9 @@ async function startDetection() {
     try {
         showLoading(true);
         
-        // On Vercel or when backend is not available, skip the backend-based detection
+        // When backend is not available, skip the backend-based detection
         // and go directly to webcam mode
-        if (!useBackend || window.location.hostname.includes('vercel.app')) {
+        if (!useBackend) {
             showLoading(false);
             await startWebcam();
             return;
@@ -289,8 +289,8 @@ async function stopDetection() {
     try {
         showLoading(true);
         
-        // Skip backend call on Vercel
-        if (useBackend && !window.location.hostname.includes('vercel.app')) {
+        // Skip backend call if not available
+        if (useBackend) {
             // Send stop command to server
             const response = await fetch(`${API_BASE_URL}api/stop`, {
                 method: 'POST',
@@ -409,8 +409,8 @@ function onImageDetect() {
 }
 
 async function runSingleImageDetection() {
-    // If backend is available and not on a purely static host, use it
-    if (useBackend && !window.location.hostname.includes('vercel.app')) {
+    // If backend is available, use it
+    if (useBackend) {
         const imageData = detectionCanvas.toDataURL('image/jpeg', 0.8);
         await detectFrame(imageData);
         return;
@@ -801,8 +801,8 @@ async function processFrames() {
 
 async function detectFrame(imageData) {
     try {
-        // Skip backend calls on Vercel
-        if (window.location.hostname.includes('vercel.app') || !useBackend) {
+        // Skip if backend is not available
+        if (!useBackend) {
             return;
         }
 
@@ -941,21 +941,14 @@ function openEquipmentDetail(label) {
 
 // ============ SERVER HEALTH CHECK ============
 async function checkServerHealth() {
-    // On Vercel, always use client-side detection
-    if (window.location.hostname.includes('vercel.app')) {
-        console.log('Detected Vercel hosting, using client-side detection');
-        useBackend = false;
-        disableDetectionControls();
-        showServerWarning('Using client-side ML detection (COCO-SSD) on Vercel.');
-        await initLocalModel();
-        return false;
-    }
-
+    // Try to connect to the backend API (works on localhost, deployed servers, and Vercel with Python functions)
+    console.log('Checking server health...');
+    
     try {
         const response = await fetch(`${API_BASE_URL}api/health`);
         
         if (!response.ok) {
-            console.warn('Server health check returned non-OK status');
+            console.warn('Server health check returned non-OK status:', response.status);
             useBackend = false;
             disableDetectionControls();
             showServerWarning('Backend not reachable – falling back to client-side detection.');
@@ -966,12 +959,19 @@ async function checkServerHealth() {
         const health = await response.json();
         console.log('Server health:', health);
         
-        if (!health.model_loaded) {
-            showAlert('Model failed to load. Check server logs.', 'warning');
+        if (health.status === 'ok' || health.model_loaded) {
+            console.log('Backend is available - using custom YOLOv8 model');
+            useBackend = true;
+            return true;
+        } else {
+            console.log('Backend not ready or degraded');
+            useBackend = false;
+            disableDetectionControls();
+            const msg = health.message || 'Backend not available – trying client-side detection.';
+            showServerWarning(msg);
+            await initLocalModel();
+            return false;
         }
-
-        useBackend = true;
-        return true;
 
     } catch (error) {
         console.error('Server health check failed:', error);
