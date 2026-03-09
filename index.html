@@ -24,8 +24,8 @@
         }
         .navbar-container { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
         .logo { font-size: 1.5rem; font-weight: bold; color: #0066ff; text-decoration: none; }
-        .nav-tabs { list-style: none; display: flex; gap: 1rem; }
-        .nav-tabs button { background: transparent; border: 2px solid rgba(0, 102, 255, 0.4); color: #b8ccff; padding: 0.7rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .nav-tabs { list-style: none; display: flex; gap: 1rem; flex-wrap: nowrap; overflow-x: auto; }
+        .nav-tabs button { background: transparent; border: 2px solid rgba(0, 102, 255, 0.4); color: #b8ccff; padding: 0.7rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; white-space: nowrap; }
         .nav-tabs button:hover, .nav-tabs button.active { color: #00d4ff; border-color: #00d4ff; background: rgba(0, 102, 255, 0.15); }
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
         .tab-content { display: none; }
@@ -37,8 +37,9 @@
         .video-wrapper { background: #0a0e14; border-radius: 10px; overflow: hidden; border: 2px solid rgba(0, 102, 255, 0.2); margin-bottom: 1rem; aspect-ratio: 16/9; }
         #webcam-feed, #detection-canvas { width: 100%; height: 100%; display: block; transition: transform 0.3s ease; }
         #webcam-feed.flipped { transform: scaleX(-1); }
-        .button-group { display: flex; gap: 1rem; }
-        .btn { padding: 0.75rem 1.4rem; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; }
+        .button-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+        @media (max-width: 768px) { .button-group { flex-wrap: nowrap; overflow-x: auto; } }
+        .btn { padding: 0.75rem 1.4rem; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
         .btn-primary { background: #0066ff; color: #fff; }
         .btn-primary:hover { background: #0077ff; }
         .btn-danger { background: #dc2626; color: #fff; }
@@ -49,6 +50,12 @@
         .detection-mode-content { transition: opacity 0.3s ease; }
         .detection-mode-btn { transition: all 0.3s ease; opacity: 0.7; }
         .detection-mode-btn.active { opacity: 1; box-shadow: 0 0 20px rgba(0, 102, 255, 0.4); }
+        @media (max-width: 768px) { 
+            .page-header h1 { font-size: 1.5rem; }
+            .navbar { padding: 1rem; }
+            .container { padding: 1rem; }
+            .btn { padding: 0.6rem 1rem; font-size: 0.9rem; }
+        }
     </style>
 </head>
 <body>
@@ -87,7 +94,7 @@
                 <div id="webcam-mode" class="detection-mode-content active">
                     <div>
                         <h3 style="margin-bottom: 1rem; color: #00d4ff;">Live Webcam</h3>
-                        <div class="video-wrapper" id="video-container">
+                        <div class="video-wrapper">
                             <video id="webcam-feed" autoplay muted playsinline></video>
                             <canvas id="detection-canvas" style="display:none;"></canvas>
                         </div>
@@ -100,6 +107,9 @@
                             </button>
                             <button id="flip-btn" class="btn btn-primary" style="display:none;" onclick="flipCamera()">
                                 <i class="fas fa-sync-alt"></i> Flip Camera
+                            </button>
+                            <button id="back-camera-btn" class="btn btn-primary" style="display:none;" onclick="switchCamera()">
+                                <i class="fas fa-camera"></i> Back Camera
                             </button>
                         </div>
                     </div>
@@ -206,7 +216,6 @@
                 isDetectionRunning = true;
                 document.getElementById('start-btn').style.display = 'none';
                 document.getElementById('stop-btn').style.display = 'inline-flex';
-                document.getElementById('flip-btn').style.display = 'inline-flex';
 
                 alert('Camera started!');
                 detectFrames();
@@ -225,8 +234,6 @@
             isDetectionRunning = false;
             document.getElementById('start-btn').style.display = 'inline-flex';
             document.getElementById('stop-btn').style.display = 'none';
-            document.getElementById('flip-btn').style.display = 'none';
-            document.getElementById('webcam-feed').classList.remove('flipped');
             alert('Camera stopped');
         }
 
@@ -266,12 +273,6 @@
                 console.error('Detection error:', err);
                 if (isDetectionRunning) setTimeout(detectFrames, 150);
             }
-        }
-
-        // Flip camera (mirror horizontally)
-        function flipCamera() {
-            const video = document.getElementById('webcam-feed');
-            video.classList.toggle('flipped');
         }
 
         // Load model on page load
@@ -361,55 +362,56 @@
         // Detect objects in uploaded image
         async function detectUploadedImage() {
             try {
-                const img = document.getElementById('preview-img');
+                const previewImg = document.getElementById('preview-img');
                 const resultsDiv = document.getElementById('gallery-detection-results');
 
-                if (!img.src) {
+                if (!previewImg || !previewImg.src) {
                     resultsDiv.innerHTML = '<p style="color: #dc2626;">No image loaded</p>';
+                    return;
+                }
+
+                if (!localModel) {
+                    resultsDiv.innerHTML = '<p style="color: #dc2626;">Model not loaded yet. Please wait...</p>';
                     return;
                 }
 
                 resultsDiv.innerHTML = '<p style="color: #a0aec0;"><i class="fas fa-spinner fa-spin"></i> Analyzing image...</p>';
 
-                if (localModel) {
-                    // Create a canvas from the image for detection
-                    const canvas = document.createElement('canvas');
-                    const imgElement = new Image();
-                    
-                    imgElement.onload = async () => {
-                        canvas.width = imgElement.width;
-                        canvas.height = imgElement.height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(imgElement, 0, 0);
-
-                        try {
-                            const predictions = await localModel.detect(canvas);
-                            
-                            if (predictions.length === 0) {
-                                resultsDiv.innerHTML = '<p style="color: #a0aec0;">No equipment detected in the image</p>';
-                            } else {
-                                let html = '<div style="max-height: 400px; overflow-y: auto;">';
-                                predictions.forEach((p, idx) => {
-                                    html += `<div style="background: rgba(0,102,255,0.2); padding: 0.7rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 3px solid #0066ff;">
-                                        <strong style="color: #00d4ff;">${idx + 1}. ${p.class}</strong> - <span style="color: #10b981;">${(p.score * 100).toFixed(1)}%</span>
-                                    </div>`;
-                                });
-                                html += '</div>';
-                                resultsDiv.innerHTML = html;
-                            }
-                        } catch (err) {
-                            console.error('Detection error:', err);
-                            resultsDiv.innerHTML = '<p style="color: #dc2626;">Detection failed: ' + err.message + '</p>';
-                        }
-                    };
-
-                    imgElement.onerror = () => {
-                        resultsDiv.innerHTML = '<p style="color: #dc2626;">Failed to load image</p>';
-                    };
-
-                    imgElement.src = img.src;
+                // Create a hidden canvas to draw the image
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Use the preview image directly - it's guaranteed to be loaded
+                canvas.width = previewImg.naturalWidth || previewImg.width;
+                canvas.height = previewImg.naturalHeight || previewImg.height;
+                
+                if (canvas.width <= 0 || canvas.height <= 0) {
+                    // Fallback to current dimensions if natural dimensions not available
+                    canvas.width = previewImg.width || 640;
+                    canvas.height = previewImg.height || 480;
+                }
+                
+                // Draw the image to canvas
+                ctx.drawImage(previewImg, 0, 0);
+                
+                console.log('Canvas ready for detection. Size:', canvas.width, 'x', canvas.height);
+                
+                // Run detection
+                const predictions = await localModel.detect(canvas);
+                
+                console.log('Predictions:', predictions);
+                
+                if (predictions.length === 0) {
+                    resultsDiv.innerHTML = '<p style="color: #a0aec0;">No equipment detected in the image</p>';
                 } else {
-                    resultsDiv.innerHTML = '<p style="color: #dc2626;">Model not loaded yet. Please wait...</p>';
+                    let html = '<div style="max-height: 400px; overflow-y: auto;">';
+                    predictions.forEach((p, idx) => {
+                        html += `<div style="background: rgba(0,102,255,0.2); padding: 0.7rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 3px solid #0066ff;">
+                            <strong style="color: #00d4ff;">${idx + 1}. ${p.class}</strong> - <span style="color: #10b981;">${(p.score * 100).toFixed(1)}%</span>
+                        </div>`;
+                    });
+                    html += '</div>';
+                    resultsDiv.innerHTML = html;
                 }
             } catch (err) {
                 console.error('Upload detection error:', err);
