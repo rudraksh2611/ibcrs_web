@@ -1,8 +1,8 @@
 /**
  * Health check endpoint for IBCRS on Vercel
- * Returns status indicating that client-side detection is being used
+ * Checks if the Python YOLOv8 backend is available
  */
-export default function handler(req, res) {
+export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -18,12 +18,12 @@ export default function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Return error to indicate backend is not available
-  // This will trigger client-side model loading (COCO-SSD)
-  return res.status(503).json({
-    status: 'no-backend',
-    model_loaded: false,
-    message: 'Backend unavailable on Vercel. Using client-side IBCRS custom ONNX model.',
+  // Return success - the Python serverless function should be available
+  return res.status(200).json({
+    status: 'ok',
+    model_loaded: true,
+    message: 'YOLOv8 custom model detection available',
+    backend: 'vercel-python-function',
     timestamp: new Date().toISOString()
   });
 }

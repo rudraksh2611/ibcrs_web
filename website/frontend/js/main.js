@@ -80,6 +80,11 @@ let fpsCounter;
 let detectionResults;
 let loadingSpinner;
 let navLinks;
+let imageUploadInput;
+let imageDetectBtn;
+let uploadedPreview;
+
+let lastUploadedDataUrl = null;
 
 // ============ INITIALIZATION ============
 function initializeDOMElements() {
@@ -98,6 +103,9 @@ function initializeDOMElements() {
     detectionResults = document.getElementById('detection-results');
     loadingSpinner = document.getElementById('loading-spinner');
     navLinks = document.querySelectorAll('.nav-btn[data-tab], .nav-link');
+    imageUploadInput = document.getElementById('image-upload');
+    imageDetectBtn = document.getElementById('image-detect-btn');
+    uploadedPreview = document.getElementById('uploaded-preview');
 
     // If video or canvas elements are missing on some deployed pages, create fallbacks
     const wrapper = document.getElementById('video-wrapper') || document.querySelector('.video-display-area') || document.querySelector('.video-wrapper');
@@ -187,6 +195,8 @@ function initializeEventListeners() {
     if (startWebcamBtn) startWebcamBtn.addEventListener('click', startWebcam);
     if (stopWebcamBtn) stopWebcamBtn.addEventListener('click', stopWebcam);
     if (snapshotBtn) snapshotBtn.addEventListener('click', captureSnapshot);
+    if (imageUploadInput) imageUploadInput.addEventListener('change', onImageSelected);
+    if (imageDetectBtn) imageDetectBtn.addEventListener('click', onImageDetect);
 }
 
 function setupNavigation() {
@@ -231,9 +241,9 @@ async function startDetection() {
     try {
         showLoading(true);
         
-        // On Vercel or when backend is not available, skip the backend-based detection
+        // When backend is not available, skip the backend-based detection
         // and go directly to webcam mode
-        if (!useBackend || window.location.hostname.includes('vercel.app')) {
+        if (!useBackend) {
             showLoading(false);
             await startWebcam();
             return;
@@ -279,8 +289,8 @@ async function stopDetection() {
     try {
         showLoading(true);
         
-        // Skip backend call on Vercel
-        if (useBackend && !window.location.hostname.includes('vercel.app')) {
+        // Skip backend call if not available
+        if (useBackend) {
             // Send stop command to server
             const response = await fetch(`${API_BASE_URL}api/stop`, {
                 method: 'POST',
@@ -340,6 +350,94 @@ function captureSnapshot() {
         showAlert('Snapshot captured!', 'success');
     } catch (e) {
         showAlert('Failed to capture snapshot.', 'error');
+    }
+}
+
+function onImageSelected(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+        showAlert('Please select an image file.', 'warning');
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+        lastUploadedDataUrl = reader.result;
+        if (uploadedPreview) {
+            uploadedPreview.src = lastUploadedDataUrl;
+            uploadedPreview.style.display = 'block';
+        }
+        const placeholder = document.getElementById('uploaded-placeholder');
+        if (placeholder) placeholder.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+}
+
+function onImageDetect() {
+    if (!lastUploadedDataUrl) {
+        showAlert('Please choose an image first.', 'warning');
+        return;
+    }
+    try {
+        showLoading(true);
+        const img = new Image();
+        img.onload = async () => {
+            if (!detectionCanvas) {
+                showLoading(false);
+                return;
+            }
+            detectionCanvas.width = img.width;
+            detectionCanvas.height = img.height;
+            const ctx = detectionCanvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            try {
+                await runSingleImageDetection();
+            } finally {
+                showLoading(false);
+            }
+        };
+        img.onerror = () => {
+            showLoading(false);
+            showAlert('Could not load the selected image.', 'error');
+        };
+        img.src = lastUploadedDataUrl;
+    } catch (e) {
+        console.error('Image detect error:', e);
+        showAlert('Detection on image failed.', 'error');
+        showLoading(false);
+    }
+}
+
+async function runSingleImageDetection() {
+    // If backend is available, use it
+    if (useBackend) {
+        const imageData = detectionCanvas.toDataURL('image/jpeg', 0.8);
+        await detectFrame(imageData);
+        return;
+    }
+    // Otherwise, fall back to client-side model
+    try {
+        if (!localModel) {
+            await initLocalModel();
+        }
+        if (!localModel) {
+            showAlert('Detection model is not ready yet.', 'warning');
+            return;
+        }
+        if (localModel.type === 'coco' && localModel.model && typeof localModel.model.detect === 'function') {
+            const results = await localModel.model.detect(detectionCanvas);
+            const dets = convertLocalResults(results);
+            displayDetections(dets);
+        } else if (localModel.type === 'ultralytics' && localModel.model) {
+            if (typeof localModel.model.predict === 'function') {
+                const results = await localModel.model.predict(detectionCanvas, { conf: 0.3 });
+                const dets = convertLocalResults(results);
+                displayDetections(dets);
+            }
+        }
+    } catch (e) {
+        console.error('Client-side image detection failed', e);
+        showAlert('Client-side detection failed.', 'error');
     }
 }
 
@@ -705,8 +803,8 @@ async function processFrames() {
 
 async function detectFrame(imageData) {
     try {
-        // Skip backend calls on Vercel
-        if (window.location.hostname.includes('vercel.app') || !useBackend) {
+        // Skip if backend is not available
+        if (!useBackend) {
             return;
         }
 
@@ -855,21 +953,14 @@ function openEquipmentDetail(label) {
 
 // ============ SERVER HEALTH CHECK ============
 async function checkServerHealth() {
-    // On Vercel, always use client-side detection
-    if (window.location.hostname.includes('vercel.app')) {
-        console.log('Detected Vercel hosting, using client-side ONNX detection');
-        useBackend = false;
-        disableDetectionControls();
-        showServerWarning('Loading IBCRS custom detection model...');
-        await initLocalModel();
-        return false;
-    }
-
+    // Try to connect to the backend API (works on localhost, deployed servers, and Vercel with Python functions)
+    console.log('Checking server health...');
+    
     try {
         const response = await fetch(`${API_BASE_URL}api/health`);
         
         if (!response.ok) {
-            console.warn('Server health check returned non-OK status');
+            console.warn('Server health check returned non-OK status:', response.status);
             useBackend = false;
             disableDetectionControls();
             showServerWarning('Backend not reachable – using IBCRS custom model for detection.');
@@ -880,12 +971,19 @@ async function checkServerHealth() {
         const health = await response.json();
         console.log('Server health:', health);
         
-        if (!health.model_loaded) {
-            showAlert('Model failed to load. Check server logs.', 'warning');
+        if (health.status === 'ok' || health.model_loaded) {
+            console.log('Backend is available - using custom YOLOv8 model');
+            useBackend = true;
+            return true;
+        } else {
+            console.log('Backend not ready or degraded');
+            useBackend = false;
+            disableDetectionControls();
+            const msg = health.message || 'Backend not available – trying client-side detection.';
+            showServerWarning(msg);
+            await initLocalModel();
+            return false;
         }
-
-        useBackend = true;
-        return true;
 
     } catch (error) {
         console.error('Server health check failed:', error);

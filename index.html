@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IBCRS | Intelligent BioTech Component Recognition</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: rgba(15, 20, 25, 0.95);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(0, 102, 255, 0.2);
+        }
+        .navbar-container { max-width: 1400px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.5rem; font-weight: bold; color: #0066ff; text-decoration: none; }
+        .nav-tabs { list-style: none; display: flex; gap: 1rem; flex-wrap: nowrap; overflow-x: auto; }
+        .nav-tabs button { background: transparent; border: 2px solid rgba(0, 102, 255, 0.4); color: #b8ccff; padding: 0.7rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: 600; white-space: nowrap; }
+        .nav-tabs button:hover, .nav-tabs button.active { color: #00d4ff; border-color: #00d4ff; background: rgba(0, 102, 255, 0.15); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .page-header { background: rgba(0, 102, 255, 0.1); border: 1px solid rgba(0, 102, 255, 0.25); border-radius: 16px; padding: 2.5rem; margin-bottom: 2rem; text-align: center; }
+        .page-header h1 { font-size: 2rem; margin-bottom: 1rem; }
+        .detection-panel { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin: 2rem 0; }
+        @media (max-width: 900px) { .detection-panel { grid-template-columns: 1fr; } }
+        .video-wrapper { background: #0a0e14; border-radius: 10px; overflow: hidden; border: 2px solid rgba(0, 102, 255, 0.2); margin-bottom: 1rem; aspect-ratio: 16/9; }
+        #webcam-feed, #detection-canvas { width: 100%; height: 100%; display: block; transition: transform 0.3s ease; }
+        #webcam-feed.flipped { transform: scaleX(-1); }
+        .button-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+        @media (max-width: 768px) { .button-group { flex-wrap: nowrap; overflow-x: auto; } }
+        .btn { padding: 0.75rem 1.4rem; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
+        .btn-primary { background: #0066ff; color: #fff; }
+        .btn-primary:hover { background: #0077ff; }
+        .btn-danger { background: #dc2626; color: #fff; }
+        .btn-danger:hover { background: #b91c1c; }
+        .detection-results { background: rgba(26, 31, 46, 0.6); border-radius: 10px; padding: 1.5rem; border: 1px solid rgba(0, 102, 255, 0.2); }
+        .section { background: rgba(26, 31, 46, 0.6); border-radius: 12px; padding: 2rem; margin-bottom: 1.5rem; }
+        .section h2 { color: #0066ff; margin-bottom: 1rem; }
+        .detection-mode-content { transition: opacity 0.3s ease; }
+        .detection-mode-btn { transition: all 0.3s ease; opacity: 0.7; }
+        .detection-mode-btn.active { opacity: 1; box-shadow: 0 0 20px rgba(0, 102, 255, 0.4); }
+        @media (max-width: 768px) { 
+            .page-header h1 { font-size: 1.5rem; }
+            .navbar { padding: 1rem; }
+            .container { padding: 1rem; }
+            .btn { padding: 0.6rem 1rem; font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="#" class="logo"><i class="fas fa-robot"></i> IBCRS</a>
+            <ul class="nav-tabs">
+                <li><button class="nav-btn active" data-tab="home" onclick="switchTab('home')"><i class="fas fa-bullseye"></i> Detection</button></li>
+                <li><button class="nav-btn" data-tab="about" onclick="switchTab('about')"><i class="fas fa-book"></i> About</button></li>
+                <li><button class="nav-btn" data-tab="team" onclick="switchTab('team')"><i class="fas fa-users"></i> Team</button></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- HOME TAB -->
+        <div id="home" class="tab-content active">
+            <div class="page-header">
+                <h1>Equipment Detection System</h1>
+                <p>Real-Time AI-Powered Biotech Component Recognition</p>
+            </div>
+
+            <div style="margin-bottom: 2rem;">
+                <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                    <button class="btn btn-primary detection-mode-btn active" data-mode="webcam" onclick="switchDetectionMode('webcam')">
+                        <i class="fas fa-video"></i> Live Webcam
+                    </button>
+                    <button class="btn btn-primary detection-mode-btn" data-mode="gallery" onclick="switchDetectionMode('gallery')">
+                        <i class="fas fa-image"></i> Upload Image
+                    </button>
+                </div>
+            </div>
+
+            <div class="detection-panel">
+                <!-- WEBCAM MODE -->
+                <div id="webcam-mode" class="detection-mode-content active">
+                    <div>
+                        <h3 style="margin-bottom: 1rem; color: #00d4ff;">Live Webcam</h3>
+                        <div class="video-wrapper">
+                            <video id="webcam-feed" autoplay muted playsinline></video>
+                            <canvas id="detection-canvas" style="display:none;"></canvas>
+                        </div>
+                        <div class="button-group">
+                            <button id="start-btn" class="btn btn-primary" onclick="startWebcam()">
+                                <i class="fas fa-play"></i> Start
+                            </button>
+                            <button id="stop-btn" class="btn btn-danger" style="display:none;" onclick="stopWebcam()">
+                                <i class="fas fa-stop"></i> Stop
+                            </button>
+                            <button id="flip-btn" class="btn btn-primary" style="display:none;" onclick="flipCamera()">
+                                <i class="fas fa-sync-alt"></i> Flip Camera
+                            </button>
+                            <button id="back-camera-btn" class="btn btn-primary" style="display:none;" onclick="switchCamera()">
+                                <i class="fas fa-camera"></i> Back Camera
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="detection-results">
+                        <h4 style="color: #00d4ff; margin-bottom: 1rem;"><i class="fas fa-check-circle"></i> Detections</h4>
+                        <div id="detection-results" style="color: #a0aec0;">No detections yet</div>
+                    </div>
+                </div>
+
+                <!-- GALLERY MODE -->
+                <div id="gallery-mode" class="detection-mode-content" style="display:none;">
+                    <div>
+                        <h3 style="margin-bottom: 1rem; color: #00d4ff;">Upload Image from Gallery</h3>
+                        <div style="background: rgba(0, 102, 255, 0.1); border: 2px dashed rgba(0, 102, 255, 0.5); border-radius: 10px; padding: 2rem; text-align: center; cursor: pointer; transition: all 0.3s ease;" id="upload-drop-zone">
+                            <input type="file" id="image-input" accept="image/*" style="display:none;" onchange="handleImageUpload(event)">
+                            <i class="fas fa-cloud-upload-alt" style="font-size: 3rem; color: #0066ff; margin-bottom: 1rem; display: block;"></i>
+                            <p style="color: #b8ccff; margin: 0; font-size: 1.1rem; margin-bottom: 0.5rem;">Click to upload or drag & drop</p>
+                            <p style="color: #8ba3d0; margin: 0; font-size: 0.9rem;">PNG, JPG, GIF up to 10MB</p>
+                        </div>
+                        <div class="button-group" style="margin-top: 1rem;">
+                            <button class="btn btn-primary" onclick="document.getElementById('image-input').click()">
+                                <i class="fas fa-folder-open"></i> Browse Gallery
+                            </button>
+                            <button id="detect-img-btn" class="btn btn-primary" onclick="detectUploadedImage()" style="display:none;">
+                                <i class="fas fa-magnifying-glass"></i> Detect
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="detection-results">
+                        <h4 style="color: #00d4ff; margin-bottom: 1rem;"><i class="fas fa-check-circle"></i> Detection Results</h4>
+                        <div id="uploaded-image-preview" style="display:none; margin-bottom: 1rem;">
+                            <img id="preview-img" style="width: 100%; border-radius: 8px; border: 1px solid rgba(0, 102, 255, 0.3);" alt="Preview">
+                        </div>
+                        <div id="gallery-detection-results" style="color: #a0aec0;">No image selected yet</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABOUT TAB -->
+        <div id="about" class="tab-content">
+            <div class="page-header"><h1>About IBCRS</h1></div>
+            <div class="section">
+                <h2>What is IBCRS?</h2>
+                <p>IBCRS is an AI-powered platform for real-time detection and recognition of biotech laboratory equipment using advanced computer vision.</p>
+            </div>
+        </div>
+
+        <!-- TEAM TAB -->
+        <div id="team" class="tab-content">
+            <div class="page-header"><h1>Team</h1></div>
+            <div class="section">
+                <h2>Our Innovators</h2>
+                <p><strong>Jagriti Arora</strong> - AI/ML Specialist</p>
+                <p><strong>Rudraksh Singh Bhadauria</strong> - Full Stack Developer</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load CDN libraries first -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+
+    <!-- INLINE ALL FUNCTIONS AT PAGE LOAD -->
+    <script>
+        // Global variables
+        let mediaStream = null;
+        let localModel = null;
+        let isDetectionRunning = false;
+        let startTime = null;
+        let frameCount = 0;
+
+        // Tab switching function
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Start webcam
+        async function startWebcam() {
+            try {
+                console.log('Requesting camera...');
+                const video = document.getElementById('webcam-feed');
+                
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    alert('Camera not supported');
+                    return;
+                }
+
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 1280 }, height: { ideal: 720 } }
+                });
+
+                video.srcObject = mediaStream;
+                console.log('Camera started');
+
+                // Wait for video to load
+                await new Promise(r => { video.onloadedmetadata = r; });
+
+                isDetectionRunning = true;
+                document.getElementById('start-btn').style.display = 'none';
+                document.getElementById('stop-btn').style.display = 'inline-flex';
+
+                alert('Camera started!');
+                detectFrames();
+            } catch (err) {
+                console.error('Camera error:', err);
+                alert('Camera error: ' + err.message);
+            }
+        }
+
+        // Stop webcam
+        function stopWebcam() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(t => t.stop());
+                mediaStream = null;
+            }
+            isDetectionRunning = false;
+            document.getElementById('start-btn').style.display = 'inline-flex';
+            document.getElementById('stop-btn').style.display = 'none';
+            alert('Camera stopped');
+        }
+
+        // Detect objects in frames
+        async function detectFrames() {
+            if (!isDetectionRunning) return;
+
+            try {
+                const video = document.getElementById('webcam-feed');
+                const canvas = document.getElementById('detection-canvas');
+                const resultsDiv = document.getElementById('detection-results');
+
+                if (!video.srcObject) return;
+
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+
+                if (localModel) {
+                    const predictions = await localModel.detect(canvas);
+                    
+                    if (predictions.length === 0) {
+                        resultsDiv.innerHTML = '<p style="color: #a0aec0;">No objects detected</p>';
+                    } else {
+                        let html = '';
+                        predictions.forEach(p => {
+                            html += `<div style="background: rgba(0,102,255,0.2); padding: 0.7rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 3px solid #0066ff;">
+                                <strong style="color: #00d4ff;">${p.class}</strong> - <span style="color: #10b981;">${(p.score * 100).toFixed(1)}%</span>
+                            </div>`;
+                        });
+                        resultsDiv.innerHTML = html;
+                    }
+                }
+
+                frameCount++;
+                setTimeout(detectFrames, 150);
+            } catch (err) {
+                console.error('Detection error:', err);
+                if (isDetectionRunning) setTimeout(detectFrames, 150);
+            }
+        }
+
+        // Load model on page load
+        window.addEventListener('load', async () => {
+            console.log('Page loaded. Loading COCO-SSD model...');
+            try {
+                if (window.cocoSsd) {
+                    localModel = await cocoSsd.load();
+                    console.log('Model loaded!');
+                } else {
+                    console.warn('COCO-SSD not available');
+                }
+            } catch (err) {
+                console.error('Model load failed:', err);
+            }
+
+            // Setup drag and drop for image upload
+            setupDragAndDrop();
+        });
+
+        // Switch detection mode between webcam and gallery
+        function switchDetectionMode(mode) {
+            // Update buttons
+            document.querySelectorAll('.detection-mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+
+            // Update content panels
+            document.querySelectorAll('.detection-mode-content').forEach(panel => panel.style.display = 'none');
+            document.getElementById(`${mode}-mode`).style.display = 'block';
+
+            // Stop webcam if switching away from it
+            if (mode === 'gallery' && isDetectionRunning) {
+                stopWebcam();
+            }
+        }
+
+        // Setup drag and drop functionality
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('upload-drop-zone');
+            const imageInput = document.getElementById('image-input');
+
+            dropZone.addEventListener('click', () => imageInput.click());
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.style.borderColor = '#00d4ff';
+                dropZone.style.background = 'rgba(0, 212, 255, 0.15)';
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.style.borderColor = 'rgba(0, 102, 255, 0.5)';
+                dropZone.style.background = 'rgba(0, 102, 255, 0.1)';
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.style.borderColor = 'rgba(0, 102, 255, 0.5)';
+                dropZone.style.background = 'rgba(0, 102, 255, 0.1)';
+
+                const files = e.dataTransfer.files;
+                if (files.length > 0 && files[0].type.startsWith('image/')) {
+                    imageInput.files = files;
+                    handleImageUpload({ target: { files: files } });
+                }
+            });
+        }
+
+        // Handle image file upload
+        function handleImageUpload(event) {
+            const files = event.target.files;
+            if (files.length === 0) return;
+
+            const file = files[0];
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                const img = document.getElementById('preview-img');
+                img.src = e.target.result;
+                document.getElementById('uploaded-image-preview').style.display = 'block';
+                document.getElementById('gallery-detection-results').innerHTML = '<p style="color: #a0aec0;">Image loaded. Click "Detect" to analyze.</p>';
+                document.getElementById('detect-img-btn').style.display = 'inline-flex';
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        // Detect objects in uploaded image
+        async function detectUploadedImage() {
+            try {
+                const previewImg = document.getElementById('preview-img');
+                const resultsDiv = document.getElementById('gallery-detection-results');
+
+                if (!previewImg || !previewImg.src) {
+                    resultsDiv.innerHTML = '<p style="color: #dc2626;">No image loaded</p>';
+                    return;
+                }
+
+                if (!localModel) {
+                    resultsDiv.innerHTML = '<p style="color: #dc2626;">Model not loaded yet. Please wait...</p>';
+                    return;
+                }
+
+                resultsDiv.innerHTML = '<p style="color: #a0aec0;"><i class="fas fa-spinner fa-spin"></i> Analyzing image...</p>';
+
+                // Create a hidden canvas to draw the image
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Use the preview image directly - it's guaranteed to be loaded
+                canvas.width = previewImg.naturalWidth || previewImg.width;
+                canvas.height = previewImg.naturalHeight || previewImg.height;
+                
+                if (canvas.width <= 0 || canvas.height <= 0) {
+                    // Fallback to current dimensions if natural dimensions not available
+                    canvas.width = previewImg.width || 640;
+                    canvas.height = previewImg.height || 480;
+                }
+                
+                // Draw the image to canvas
+                ctx.drawImage(previewImg, 0, 0);
+                
+                console.log('Canvas ready for detection. Size:', canvas.width, 'x', canvas.height);
+                
+                // Run detection
+                const predictions = await localModel.detect(canvas);
+                
+                console.log('Predictions:', predictions);
+                
+                if (predictions.length === 0) {
+                    resultsDiv.innerHTML = '<p style="color: #a0aec0;">No equipment detected in the image</p>';
+                } else {
+                    let html = '<div style="max-height: 400px; overflow-y: auto;">';
+                    predictions.forEach((p, idx) => {
+                        html += `<div style="background: rgba(0,102,255,0.2); padding: 0.7rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 3px solid #0066ff;">
+                            <strong style="color: #00d4ff;">${idx + 1}. ${p.class}</strong> - <span style="color: #10b981;">${(p.score * 100).toFixed(1)}%</span>
+                        </div>`;
+                    });
+                    html += '</div>';
+                    resultsDiv.innerHTML = html;
+                }
+            } catch (err) {
+                console.error('Upload detection error:', err);
+                document.getElementById('gallery-detection-results').innerHTML = '<p style="color: #dc2626;"><strong>Error:</strong> ' + err.message + '</p>';
+            }
+        }
+    </script>
+</body>
+</html>

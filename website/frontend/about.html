@@ -114,6 +114,12 @@
             background: rgba(0, 102, 255, 0.1);
         }
 
+        .hamburger-menu { display: none; flex-direction: column; gap: 0.4rem; cursor: pointer; background: none; border: none; padding: 0.5rem; }
+        .hamburger-menu span { width: 26px; height: 2.5px; background: #0066ff; border-radius: 2px; transition: all 0.3s ease; }
+        .hamburger-menu.active span:nth-child(1) { transform: rotate(45deg) translate(8px, 8px); }
+        .hamburger-menu.active span:nth-child(2) { opacity: 0; width: 0; }
+        .hamburger-menu.active span:nth-child(3) { transform: rotate(-45deg) translate(7px, -7px); }
+
         /* CONTAINER */
         .container {
             max-width: 1200px;
@@ -452,6 +458,19 @@
 
         /* RESPONSIVE */
         @media (max-width: 768px) {
+            .hamburger-menu { display: flex; }
+            .nav-links { position: absolute; top: 100%; left: 0; right: 0; flex-direction: column; background: rgba(15, 20, 25, 0.98); border-bottom: 1px solid rgba(0, 102, 255, 0.2); padding: 0.5rem 0; gap: 0; max-height: 0; overflow: hidden; }
+            .nav-links.open { max-height: 500px; }
+            .nav-links li { width: 100%; }
+            .nav-links li a { width: 100%; padding: 0.8rem 1.5rem; text-align: left; border-left: 3px solid transparent; }
+            .nav-links li a:hover { background: rgba(0, 102, 255, 0.1); border-left-color: #0066ff; }
+            .navbar { position: relative; }
+            .navbar-container { position: relative; }
+            .nav-links li a {
+                padding: 0.5rem 0.6rem;
+                font-size: 0.8rem;
+            }
+
             .page-header h1 {
                 font-size: 1.8rem;
             }
@@ -478,6 +497,11 @@
                 <img src="./assets/logo.svg" alt="IBCRS logo" />
                 <span>IBCRS</span>
             </div>
+            <button class="hamburger-menu" id="hamburger-btn">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
             <ul class="nav-links">
                 <li><a href="index.html">Home</a></li>
                 <li><a href="index.html#detection">Detection</a></li>
@@ -828,5 +852,23 @@
         </p>
     </footer>
     
+    <script>
+        // Hamburger menu toggle
+        const hamburgerBtn = document.getElementById('hamburger-btn');
+        const navLinks = document.querySelector('.nav-links');
+        if (hamburgerBtn && navLinks) {
+            hamburgerBtn.addEventListener('click', function() {
+                hamburgerBtn.classList.toggle('active');
+                navLinks.classList.toggle('open');
+            });
+            // Close menu when a link is clicked
+            navLinks.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', function() {
+                    hamburgerBtn.classList.remove('active');
+                    navLinks.classList.remove('open');
+                });
+            });
+        }
+    </script>
 </body>
 </html>

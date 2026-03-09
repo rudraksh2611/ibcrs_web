@@ -119,6 +119,17 @@
             box-shadow: 0 0 15px rgba(0, 102, 255, 0.5), inset 0 0 10px rgba(0, 212, 255, 0.1);
         }
 
+        @media (max-width: 768px) {
+            .nav-tabs li button {
+                padding: 0.5rem 0.6rem;
+                font-size: 0.8rem;
+                border-radius: 4px;
+            }
+            .nav-tabs li button i {
+                font-size: 0.9rem;
+            }
+        }
+
         .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
         .tab-content { display: none; animation: fadeIn 0.3s ease; }
         .tab-content.active { display: block; }
@@ -243,6 +254,47 @@
         .contact-card i { font-size: 2rem; color: #0066ff; }
         .contact-card h4 { color: #00d4ff; font-size: 1rem; margin: 0; }
         .contact-card p { color: #a0aec0; font-size: 0.95rem; margin: 0; }
+        .upload-grid { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 1.5rem; align-items: stretch; margin-top: 0.75rem; }
+        @media (max-width: 900px) { .upload-grid { grid-template-columns: 1fr; } }
+        .upload-card { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+        .upload-preview-frame {
+            border-radius: 12px;
+            border: 1px dashed rgba(0, 102, 255, 0.4);
+            background: rgba(15, 23, 42, 0.85);
+            min-height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            padding: 0.75rem;
+        }
+        .upload-placeholder {
+            color: #6b7a99;
+            text-align: center;
+            font-size: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .upload-placeholder i { font-size: 1.8rem; color: #0066ff; opacity: 0.8; }
+        .hamburger-menu { display: none; flex-direction: column; gap: 0.4rem; cursor: pointer; background: none; border: none; padding: 0.5rem; }
+        .hamburger-menu span { width: 26px; height: 2.5px; background: #0066ff; border-radius: 2px; transition: all 0.3s ease; }
+        .hamburger-menu.active span:nth-child(1) { transform: rotate(45deg) translate(8px, 8px); }
+        .hamburger-menu.active span:nth-child(2) { opacity: 0; width: 0; }
+        .hamburger-menu.active span:nth-child(3) { transform: rotate(-45deg) translate(7px, -7px); }
+        .nav-tabs { transition: all 0.3s ease; }
+        @media (max-width: 768px) {
+            .hamburger-menu { display: flex; }
+            .nav-tabs { position: absolute; top: 100%; left: 0; right: 0; flex-direction: column; background: rgba(15, 20, 25, 0.98); border-bottom: 1px solid rgba(0, 102, 255, 0.2); padding: 0.5rem 0; gap: 0; max-height: 0; overflow: hidden; }
+            .nav-tabs.open { max-height: 500px; }
+            .nav-tabs li { width: 100%; }
+            .nav-tabs li button { width: 100%; justify-content: flex-start; padding: 0.8rem 1.5rem; border: none; border-radius: 0; font-size: 0.95rem; background: transparent; border-left: 3px solid transparent; }
+            .nav-tabs li button:hover { background: rgba(0, 102, 255, 0.1); border-left-color: #0066ff; }
+            .nav-tabs li button.active { background: rgba(0, 102, 255, 0.15); border-left-color: #00d4ff; color: #00d4ff; }
+            .navbar { position: relative; }
+            .navbar-container { position: relative; }
+        }
         .footer { background: rgba(15, 20, 25, 0.95); border-top: 1px solid rgba(0, 102, 255, 0.2); padding: 2rem; text-align: center; color: #a0aec0; margin-top: 3rem; }
         .footer a { color: #00d4ff; text-decoration: none; }
         .footer a:hover { text-decoration: underline; }
@@ -479,6 +531,11 @@
                 </svg>
                 IBCRS
             </a>
+            <button class="hamburger-menu" id="hamburger-btn">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
             <ul class="nav-tabs">
                 <li><button class="nav-btn active" data-tab="home"><i class="fas fa-home"></i> Home</button></li>
                 <li><button class="nav-btn" data-tab="detection"><i class="fas fa-bullseye"></i> Detection</button></li>
@@ -543,6 +600,31 @@
                         <p style="color: #6b7a99; font-size: 0.75rem; margin-bottom: 0.6rem;"><i class="fas fa-info-circle"></i> Components are auto-saved when detected. Click to view details.</p>
                         <div id="detection-history" style="max-height: 350px; overflow-y: auto;">
                             <p style="color: #a0aec0; font-size: 0.9rem;">No components detected yet.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2><i class="fas fa-image"></i> Upload Image Detection</h2>
+                <p>Prefer working with saved photos? Upload an image from your gallery and run the same IBCRS model on it.</p>
+                <div class="upload-grid">
+                    <div class="upload-card">
+                        <label for="image-upload" class="btn btn-primary">
+                            <i class="fas fa-folder-open"></i> Choose Image
+                        </label>
+                        <input id="image-upload" type="file" accept="image/*" style="display:none;" />
+                        <button id="image-detect-btn" class="btn btn-danger" style="margin-top:0.75rem;">
+                            <i class="fas fa-magnifying-glass"></i> Detect from Image
+                        </button>
+                    </div>
+                    <div class="upload-preview">
+                        <div class="upload-preview-frame">
+                            <img id="uploaded-preview" alt="Uploaded preview" style="max-width:100%; max-height:100%; display:none; border-radius:8px;" />
+                            <span id="uploaded-placeholder" class="upload-placeholder">
+                                <i class="fas fa-image"></i>
+                                No image selected yet
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -783,8 +865,25 @@
             button.addEventListener('click', function() {
                 const tabName = this.getAttribute('data-tab');
                 if (tabName) showSection(tabName);
+                // Close hamburger menu when tab is clicked on mobile
+                const hamburger = document.getElementById('hamburger-btn');
+                const navTabs = document.querySelector('.nav-tabs');
+                if (hamburger && navTabs) {
+                    hamburger.classList.remove('active');
+                    navTabs.classList.remove('open');
+                }
             });
         });
+        
+        // Hamburger menu toggle
+        const hamburgerBtn = document.getElementById('hamburger-btn');
+        const navTabs = document.querySelector('.nav-tabs');
+        if (hamburgerBtn && navTabs) {
+            hamburgerBtn.addEventListener('click', function() {
+                hamburgerBtn.classList.toggle('active');
+                navTabs.classList.toggle('open');
+            });
+        }
     </script>
 </body>
 </html>
