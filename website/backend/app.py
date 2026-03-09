@@ -13,26 +13,40 @@ import json
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIR = os.path.join(BASE_DIR, 'frontend')
 PROJECT_ROOT = os.path.dirname(BASE_DIR)
-MODEL_PATH = os.path.join(PROJECT_ROOT, 'model', 'best.pt')
 EQUIPMENT_JSON = os.path.join(BASE_DIR, 'frontend', 'equipment.json')
+
+# Check multiple paths for custom model (priority order)
+MODEL_CANDIDATES = [
+    os.path.join(PROJECT_ROOT, 'model', 'best.pt'),
+    os.path.join(PROJECT_ROOT, 'best (4).pt'),
+    os.path.join(PROJECT_ROOT, 'best.pt'),
+]
 
 app = Flask(__name__, template_folder=FRONTEND_DIR, static_folder=FRONTEND_DIR, static_url_path='')
 CORS(app)
 
 # Lazy-load model
 _model = None
+_model_name = None  # 'IBCRS Custom' or 'YOLOv8n (COCO)'
 _equipment_db = {}
 
 def get_model():
-    global _model
+    global _model, _model_name
     if _model is None:
         try:
             from ultralytics import YOLO
             import cv2
-            if os.path.exists(MODEL_PATH):
-                _model = YOLO(MODEL_PATH)
+            custom_path = None
+            for p in MODEL_CANDIDATES:
+                if os.path.exists(p):
+                    custom_path = p
+                    break
+            if custom_path:
+                _model = YOLO(custom_path)
+                _model_name = 'IBCRS Custom (Backend)'
             else:
-                _model = YOLO('yolov8n.pt')  # fallback
+                _model = YOLO('yolov8n.pt')  # COCO fallback
+                _model_name = 'YOLOv8n COCO (fallback)'
         except Exception as e:
             raise RuntimeError(f"Model load failed: {e}")
     return _model
@@ -48,7 +62,11 @@ def load_equipment():
 def api_health():
     try:
         get_model()
-        return jsonify({"status": "ok", "model_loaded": True})
+        return jsonify({
+            "status": "ok",
+            "model_loaded": True,
+            "model_name": _model_name or "IBCRS Custom (Backend)"
+        })
     except Exception as e:
         return jsonify({"status": "error", "model_loaded": False, "message": str(e)})
 

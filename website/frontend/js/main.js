@@ -964,6 +964,7 @@ async function checkServerHealth() {
             useBackend = false;
             disableDetectionControls();
             showServerWarning('Backend not reachable – using IBCRS custom model for detection.');
+            updateModelIndicator('Loading...');
             await initLocalModel();
             return false;
         }
@@ -972,8 +973,9 @@ async function checkServerHealth() {
         console.log('Server health:', health);
         
         if (health.status === 'ok' || health.model_loaded) {
-            console.log('Backend is available - using custom YOLOv8 model');
+            console.log('Backend is available -', health.model_name || 'YOLOv8');
             useBackend = true;
+            updateModelIndicator(health.model_name || 'IBCRS Custom (Backend)');
             return true;
         } else {
             console.log('Backend not ready or degraded');
@@ -981,6 +983,7 @@ async function checkServerHealth() {
             disableDetectionControls();
             const msg = health.message || 'Backend not available – trying client-side detection.';
             showServerWarning(msg);
+            updateModelIndicator('Loading...');
             await initLocalModel();
             return false;
         }
@@ -988,11 +991,18 @@ async function checkServerHealth() {
     } catch (error) {
         console.error('Server health check failed:', error);
         useBackend = false;
-        disableDetectionControls();
+            disableDetectionControls();
             showServerWarning('Cannot connect to backend – using IBCRS custom model for detection.');
+            updateModelIndicator('Loading...');
         await initLocalModel();
         return false;
     }
+}
+
+// Update the model indicator shown at top of page
+function updateModelIndicator(label) {
+    const el = document.getElementById('model-indicator-text');
+    if (el) el.textContent = 'Model: ' + label;
 }
 
 // small helper functions used by health check
@@ -1031,10 +1041,12 @@ async function initLocalModel() {
         });
         localModel = { type: 'onnx', session, classNames: YOLO_CLASS_NAMES };
         console.log('Loaded custom IBCRS ONNX model for client-side detection.');
+        updateModelIndicator('IBCRS Custom (ONNX)');
         showServerWarning('IBCRS custom model loaded. Ready for detection.');
         if (startWebcamBtn) startWebcamBtn.disabled = false;
     } catch (err) {
         console.error('Failed to load ONNX model', err);
+        updateModelIndicator('Unavailable');
         showServerWarning('Model load failed; detection unavailable. ' + err.message);
         if (stopWebcamBtn) stopWebcamBtn.disabled = true;
         if (snapshotBtn) snapshotBtn.disabled = true;
