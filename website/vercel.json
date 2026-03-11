@@ -4,6 +4,7 @@
   "outputDirectory": "frontend",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/models/(.*)", "destination": "/models/$1" },
     { "source": "/about", "destination": "/about.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
@@ -17,9 +18,10 @@
       ]
     },
     {
-      "source": "/(js|css|assets)/(.*)",
+      "source": "/(js|css|assets|models)/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=3600" }
+        { "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=3600" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
       ]
     }
   ]
