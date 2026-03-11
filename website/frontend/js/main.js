@@ -972,7 +972,7 @@ async function checkServerHealth() {
         const health = await response.json();
         console.log('Server health:', health);
         
-        if (health.status === 'ok' || health.model_loaded) {
+        if (health.status === 'ok' && health.model_loaded) {
             console.log('Backend is available -', health.model_name || 'YOLOv8');
             useBackend = true;
             updateModelIndicator(health.model_name || 'IBCRS Custom (Backend)');
@@ -1028,6 +1028,16 @@ const YOLO_IOU_THRESHOLD = 0.45;
 // Detection history: persists across frames until user clears
 let detectionHistory = [];
 
+async function loadModelFromUrl(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buf = await res.arrayBuffer();
+    return await ort.InferenceSession.create(buf, {
+        executionProviders: ['wasm', 'webgl'],
+        graphOptimizationLevel: 'all'
+    });
+}
+
 async function initLocalModel() {
     if (localModel) return;
 
@@ -1035,23 +1045,34 @@ async function initLocalModel() {
         if (typeof ort === 'undefined') throw new Error('ONNX Runtime Web not loaded');
 
         showServerWarning('Loading IBCRS detection model... please wait.');
-        // Use absolute URL so it works on Vercel (relative path can fail with SPA routing)
-        const modelUrl = (typeof window !== 'undefined' && window.location)
-            ? window.location.origin + '/models/best.onnx'
-            : '/models/best.onnx';
-        const session = await ort.InferenceSession.create(modelUrl, {
-            executionProviders: ['wasm', 'webgl'],
-            graphOptimizationLevel: 'all'
-        });
+        const origin = (typeof window !== 'undefined' && window.location) ? window.location.origin : '';
+        const candidates = [
+            origin + '/models/best.onnx',
+            origin + '/website/frontend/models/best.onnx',
+            'https://cdn.jsdelivr.net/gh/rudraksh2611/ibcrs_web@main/website/frontend/models/best.onnx',
+            'https://raw.githubusercontent.com/rudraksh2611/ibcrs_web/main/website/frontend/models/best.onnx'
+        ];
+        let session = null;
+        let lastErr = null;
+        for (const url of candidates) {
+            try {
+                session = await loadModelFromUrl(url);
+                console.log('Loaded IBCRS ONNX model from:', url);
+                break;
+            } catch (e) {
+                lastErr = e;
+                console.warn('Model load failed from', url, e.message);
+            }
+        }
+        if (!session) throw lastErr || new Error('All model URLs failed');
         localModel = { type: 'onnx', session, classNames: YOLO_CLASS_NAMES };
-        console.log('Loaded custom IBCRS ONNX model for client-side detection.');
         updateModelIndicator('IBCRS Custom (ONNX)');
         showServerWarning('IBCRS custom model loaded. Ready for detection.');
         if (startWebcamBtn) startWebcamBtn.disabled = false;
     } catch (err) {
         console.error('Failed to load ONNX model', err);
         updateModelIndicator('Unavailable');
-        showServerWarning('Model load failed; detection unavailable. ' + err.message);
+        showServerWarning('Model load failed; detection unavailable. ' + (err && err.message));
         if (stopWebcamBtn) stopWebcamBtn.disabled = true;
         if (snapshotBtn) snapshotBtn.disabled = true;
         throw err;
